@@ -9,167 +9,182 @@ import {
 } from "react";
 import Toast from "react-native-toast-message";
 import { httpClient } from "../http/httpClient";
-import { clearSession, saveToken } from "../storage/secureStorage";
+import { fetchMe } from "../screens/admin/auth/services/auth.service";
+import type { Usuario } from "../screens/admin/auth/types/auth.types";
+import {
+  clearSession,
+  getEmpresaId,
+  getEmpresaNombre,
+  getSucursalId,
+  getToken,
+  saveEmpresaId,
+  saveEmpresaNombre,
+  saveSucursalId,
+  saveToken,
+} from "../storage/secureStorage";
 import { useModulesStore } from "../store/modulesStore";
 import { getTabsForRoles } from "../utils/roleBasedTabs";
-
-interface BackendUser {
-  id: number;
-  usuario: string;
-  ci: string;
-  nombres: string;
-  apellidoPaterno: string;
-  apellidoMaterno: string;
-  genero: string;
-  fecha_nac: string;
-  email: string | null;
-  telefono: string | null;
-  celular: string;
-  direccion: string;
-  matricula: string;
-  expedido: string;
-  codigo_qr: string | null;
-  verificacion: string;
-  foto: string | null;
-  estado: string;
-  created_at: string;
-  updated_at: string;
-  roles: string[];
-}
-
-export type Usuario = {
-  nombreUsuario: string;
-  nombres: string;
-  apellido: string;
-  correo: string;
-  roles: string[];
-  telefono: string;
-  foto: string | null;
-  direccion?: string;
-  codigoQr?: string | null;
-};
 
 interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
   isAdmin: boolean;
+  empresaId: number | null;
+  empresaNombre: string | null;
+  sucursalId: number | null;
+  roles: string[];
   allowedRoutes: Set<string>;
-  login: (token: string) => Promise<Usuario>;
+  login: (
+    token: string,
+    empresaId: number,
+    empresaNombre: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
+  changeEmpresa: (empresaId: number, empresaNombre: string) => Promise<void>;
+  changeSucursal: (sucursalId: number | null) => Promise<void>;
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Función que mapea la respuesta del backend a nuestro tipo Usuario
-function mapBackendUserToUsuario(data: any): Usuario {
-  return {
-    nombreUsuario: data.usuario || "",
-    nombres: data.nombres || "",
-    apellido:
-      `${data.apellidoPaterno || ""} ${data.apellidoMaterno || ""}`.trim(),
-    correo: data.email || "",
-    telefono: data.celular || data.telefono || "",
-    roles: data.roles || [],
-    foto: data.foto || null,
-    direccion: data.direccion || "",
-    codigoQr: data.codigo_qr || null,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const [empresaId, setEmpresaId] = useState<number | null>(null);
+  const [empresaNombre, setEmpresaNombre] = useState<string | null>(null);
+  const [sucursalId, setSucursalId] = useState<number | null>(null);
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set());
   const { fetchModulos, clearModulos } = useModulesStore();
 
-  const hasRole = useCallback(
-    (role: string) => (user ? user.roles.includes(role) : false),
-    [user],
-  );
+  // Derivado de user.roles para compatibilidad
+  const roles = user ? user.roles.map((r) => r.rol) : [];
+
+  const hasRole = useCallback((role: string) => roles.includes(role), [roles]);
 
   const hasAnyRole = useCallback(
-    (roles: string[]) =>
-      user ? roles.some((r) => user.roles.includes(r)) : false,
-    [user],
+    (rolesToCheck: string[]) => rolesToCheck.some((r) => roles.includes(r)),
+    [roles],
   );
 
-  // Efecto inicial
+  const loadProfile = useCallback(async () => {
+    try {
+      const userData = await fetchMe();
+      setUser(userData);
+
+      await fetchModulos();
+      const moduleRoutes = useModulesStore.getState().allowedRoutes;
+      const tabRoutes = new Set<string>();
+      const tabsForRoles = getTabsForRoles(userData.roles.map((r) => r.rol));
+      for (const tab of tabsForRoles) {
+        tabRoutes.add(`/${tab.name}`);
+      }
+      setAllowedRoutes(new Set([...moduleRoutes, ...tabRoutes]));
+    } catch {
+      await clearSession();
+      clearModulos();
+      setUser(null);
+      setEmpresaId(null);
+      setEmpresaNombre(null);
+      setSucursalId(null);
+      setAllowedRoutes(new Set());
+      throw new Error("Sesión inválida");
+    }
+  }, [fetchModulos, clearModulos]);
+
+  // Restauración de sesión al abrir la app
   useEffect(() => {
     (async () => {
       try {
-        const rawData = await httpClient.getAuth<any>("/api/user");
-        const userData = mapBackendUserToUsuario(rawData);
-        setUser(userData);
-
-        await fetchModulos();
-        const moduleRoutes = useModulesStore.getState().allowedRoutes;
-
-        const tabRoutes = new Set<string>();
-        const tabsForRoles = getTabsForRoles(userData.roles);
-        for (const tab of tabsForRoles) {
-          tabRoutes.add(`/${tab.name}`);
+        const storedToken = await getToken();
+        const storedEmpresaId = await getEmpresaId();
+        if (storedToken && storedEmpresaId) {
+          setEmpresaId(storedEmpresaId);
+          const storedNombre = await getEmpresaNombre();
+          setEmpresaNombre(storedNombre);
+          const storedSucursal = await getSucursalId();
+          setSucursalId(storedSucursal);
+          await loadProfile();
         }
-
-        const merged = new Set([...moduleRoutes, ...tabRoutes]);
-        setAllowedRoutes(merged);
       } catch {
-        await clearSession();
-        clearModulos();
-        setUser(null);
-        setAllowedRoutes(new Set());
+        // loadProfile ya limpia todo si falla
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [loadProfile]);
 
-  const login = async (token: string): Promise<Usuario> => {
-    await saveToken(token);
-    const rawData = await httpClient.getAuth<any>("/api/user");
-    const userData = mapBackendUserToUsuario(rawData);
-    setUser(userData);
+  const login = useCallback(
+    async (token: string, empId: number, empNombre: string) => {
+      await saveToken(token);
+      await saveEmpresaId(empId);
+      await saveEmpresaNombre(empNombre);
+      setEmpresaId(empId);
+      setEmpresaNombre(empNombre);
+      setSucursalId(null);
+      await saveSucursalId(null);
 
-    Toast.show({
-      type: "success",
-      text1: "Inicio de sesión exitoso",
-      text2: "Bienvenido de nuevo.",
-    });
-    await fetchModulos();
-    const moduleRoutes = useModulesStore.getState().allowedRoutes;
+      await loadProfile();
 
-    const tabRoutes = new Set<string>();
-    const tabsForRoles = getTabsForRoles(userData.roles);
-    for (const tab of tabsForRoles) {
-      tabRoutes.add(`/${tab.name}`);
-    }
+      Toast.show({
+        type: "success",
+        text1: "Inicio de sesión exitoso",
+        text2: `Bienvenido a ${empNombre}.`,
+      });
+    },
+    [loadProfile],
+  );
 
-    const merged = new Set([...moduleRoutes, ...tabRoutes]);
-    setAllowedRoutes(merged);
-
-    return userData;
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await httpClient.postAuth("/api/logout", {});
     } catch {}
     await clearSession();
     clearModulos();
     setUser(null);
+    setEmpresaId(null);
+    setEmpresaNombre(null);
+    setSucursalId(null);
     setAllowedRoutes(new Set());
-  };
+  }, [clearModulos]);
+
+  const changeEmpresa = useCallback(
+    async (newEmpresaId: number, newEmpresaNombre: string) => {
+      await saveEmpresaId(newEmpresaId);
+      await saveEmpresaNombre(newEmpresaNombre);
+      await saveSucursalId(null);
+      setEmpresaId(newEmpresaId);
+      setEmpresaNombre(newEmpresaNombre);
+      setSucursalId(null);
+
+      clearModulos();
+      await fetchModulos();
+      const moduleRoutes = useModulesStore.getState().allowedRoutes;
+      setAllowedRoutes(new Set([...moduleRoutes]));
+    },
+    [clearModulos, fetchModulos],
+  );
+
+  const changeSucursal = useCallback(async (newSucursalId: number | null) => {
+    await saveSucursalId(newSucursalId);
+    setSucursalId(newSucursalId);
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        isAdmin: user?.roles?.includes("Administrador") ?? false,
+        isAdmin: roles.includes("Administrador"),
+        empresaId,
+        empresaNombre,
+        sucursalId,
+        roles,
         allowedRoutes,
         login,
         logout,
+        changeEmpresa,
+        changeSucursal,
         hasRole,
         hasAnyRole,
       }}

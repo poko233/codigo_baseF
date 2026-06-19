@@ -1,3 +1,4 @@
+// components/Sidebar/Sidebar.tsx
 import { getIonicon } from "@/screens/admin/modulos/types/modulo.types";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, usePathname, useRouter } from "expo-router";
@@ -25,11 +26,12 @@ import {
   MiFormulario,
   MiModulo,
   useModulesStore,
-} from "../../store/modulesStore"; // ← store
+} from "../../store/modulesStore";
 import { useTheme } from "../../theme/useTheme";
 import { getTabsForRoles } from "../../utils/roleBasedTabs";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
+import { SidebarCompanySelector } from "./SidebarCompanySelector"; // ← nuevo
 
 if (
   Platform.OS === "android" &&
@@ -241,21 +243,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const c = theme.colors;
   const { modulos, loading, error, fetchModulos } = useModulesStore();
   const { user } = useAuth();
-  const router = useRouter();
   const { isDesktop } = useResponsive();
 
-  const tabs = getTabsForRoles(user?.roles ?? []);
+  const tabs = getTabsForRoles(user?.roles.map((r) => r.rol) ?? []);
   const homeRoute = tabs.length > 0 ? `/${tabs[0].name}` : "/perfil";
-
-  const handleHomePress = useCallback(() => {
-    onNavigate?.();
-    router.push(homeRoute as Href);
-  }, [homeRoute, onNavigate]);
-
-  const scaleHome = useSharedValue(1);
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scaleHome.value }],
-  }));
 
   return (
     <View
@@ -270,28 +261,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         !isDesktop && { flex: 1 },
       ]}
     >
-      {/* Logo táctil */}
-      <Animated.View style={logoAnimatedStyle}>
-        <Pressable
-          onPress={handleHomePress}
-          onPressIn={() => {
-            scaleHome.value = withSpring(0.97, { damping: 15, stiffness: 200 });
-          }}
-          onPressOut={() => {
-            scaleHome.value = withSpring(1, { damping: 12, stiffness: 180 });
-          }}
-          style={[styles.logoRow, { borderBottomColor: c.border }]}
-          accessibilityLabel="Ir a inicio"
-        >
-          <View style={[styles.logoIcon, { backgroundColor: c.primary }]}>
-            <Ionicons name="business" size={16} color={c.primaryForeground} />
-          </View>
-          <Text style={[styles.logoText, { color: c.text }]} numberOfLines={1}>
-            TECNOLOGICOSF
-          </Text>
-        </Pressable>
-      </Animated.View>
+      {/* ★ Nueva cabecera con nombre de empresa y selectores ★ */}
+      <SidebarCompanySelector />
 
+      {/* Información del usuario y roles */}
       <SidebarHeader />
 
       {/* Lista de módulos */}
@@ -355,7 +328,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   );
 };
 
-/* ───────────────── Estilos (sin cambios) ───────────────── */
+/* ───────────────── Estilos ───────────────── */
 const styles = StyleSheet.create({
   sidebar: {
     width: 240,

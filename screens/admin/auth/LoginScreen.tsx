@@ -1,5 +1,5 @@
-// screens/auth/LoginScreen.tsx
-import { router } from "expo-router";
+// screens/admin/auth/LoginScreen.tsx
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import { PanResponder, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,6 +15,8 @@ import { useLoginForm } from "./hooks/useLoginForm";
 
 export default function LoginScreen() {
   const { theme } = useTheme();
+  const params = useLocalSearchParams<{ empresa: string }>();
+  const empresa = params.empresa ?? "";
 
   const {
     form,
@@ -25,7 +27,7 @@ export default function LoginScreen() {
     submitting,
     serverError,
     canSubmit,
-  } = useLoginForm();
+  } = useLoginForm({ empresa });
 
   const usernameFocused = useSharedValue(false);
   const passwordFocused = useSharedValue(false);
@@ -85,16 +87,12 @@ export default function LoginScreen() {
         enableOnAndroid={true}
         extraScrollHeight={Platform.OS === "ios" ? 40 : 60}
       >
-        {/*
-         * ✅ FIX: px-4 (era px-8) — iguala HTML px-margin-mobile
-         */}
         <View
           className="flex-1 justify-center items-center px-4"
           style={{ backgroundColor: theme.colors.background }}
           {...panResponder.panHandlers}
         >
-          {/* 🔥 ELEMENTOS DECORATIVOS DETRÁS DEL CRISTAL 🔥 */}
-          {/* Esto es solo un ejemplo. Coloca formas de colores absolutas para que el BlurView tenga algo que distorsionar */}
+          {/* Elementos decorativos detrás del cristal */}
           <View
             style={{
               position: "absolute",
@@ -103,7 +101,7 @@ export default function LoginScreen() {
               width: 200,
               height: 200,
               borderRadius: 100,
-              backgroundColor: theme.colors.primary, // Usa un color vivo de tu tema
+              backgroundColor: theme.colors.primary,
               opacity: 0.3,
             }}
           />
@@ -115,10 +113,11 @@ export default function LoginScreen() {
               width: 250,
               height: 250,
               borderRadius: 125,
-              backgroundColor: theme.colors.info, // Otro color vivo
+              backgroundColor: theme.colors.info,
               opacity: 0.3,
             }}
           />
+
           {/* Mascota */}
           <View ref={mascotRef} style={styles.mascotWrapper}>
             <Mascot
@@ -131,28 +130,8 @@ export default function LoginScreen() {
           </View>
 
           <GlassCard>
-            {/*
-             * ✅ ESTRUCTURA ESPEJO DEL HTML:
-             *
-             * HTML:  <div class="flex flex-col gap-8">   ← secciones separadas por 32px
-             *          <div>título</div>
-             *          <form class="flex flex-col gap-6"> ← campos separados por 24px
-             *            inputs + button
-             *          </form>
-             *        </div>
-             *
-             * RN:    <View gap-8>                         ← mismo gap-8 entre secciones
-             *          <View>título</View>
-             *          <View gap-6>                       ← mismo gap-6 entre campos
-             *            inputs + button
-             *          </View>
-             *        </View>
-             *
-             * ✅ FIX: max-w-md (448px) ≈ HTML max-w-[440px] (era max-w-xl = 576px)
-             * ✅ FIX: gap-8 externo (era todo gap-6 mezclado)
-             */}
             <View className="w-full max-w-md flex flex-col gap-8">
-              {/* ── Sección título (sin mb extra; gap-8 del padre lo separa) ── */}
+              {/* Título */}
               <View style={{ alignItems: "center" }}>
                 <ThemedText
                   style={[styles.title, { color: theme.colors.text }]}
@@ -162,15 +141,13 @@ export default function LoginScreen() {
                 <ThemedText
                   style={[styles.subtitle, { color: theme.colors.muted }]}
                 >
-                  Ingresa tus credenciales para acceder
+                  {empresa
+                    ? `Accediendo a ${empresa}`
+                    : "Ingresa tus credenciales para acceder"}
                 </ThemedText>
               </View>
 
-              {/*
-               * ── Sección form ──
-               * gap-6 = 24px entre campos, igual que HTML <form class="gap-6">
-               * AuthInput.marginBottom = 0, así que SOLO gap-6 controla el espacio
-               */}
+              {/* Formulario */}
               <View className="flex flex-col gap-6">
                 <AuthInput
                   label="USUARIO"
@@ -187,7 +164,7 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   maxLength={40}
                   placeholder="Usuario, CI o correo"
-                  onSubmitEditing={handleSubmit} // ← ENTER → SUBMIT
+                  onSubmitEditing={handleSubmit}
                 />
 
                 <AuthInput
@@ -263,15 +240,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    // HTML: text-headline-lg = 32px, weight 600, letterSpacing -0.02em
     fontSize: 32,
     fontWeight: "600",
     letterSpacing: -0.5,
     textAlign: "center",
-    marginBottom: 8, // HTML: mb-2 entre h1 y p
+    marginBottom: 8,
   },
   subtitle: {
-    // HTML: text-body-md = 16px
     fontSize: 16,
     textAlign: "center",
   },

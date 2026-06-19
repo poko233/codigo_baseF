@@ -1,3 +1,4 @@
+// screens/admin/perfil/components/PerfilHeader.tsx
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Lock, LogOut } from "lucide-react-native";
@@ -307,11 +308,11 @@ const getStyles = (theme: any, isDesktop: boolean) =>
     },
     logoutButton: {
       borderWidth: 1,
-      borderColor: "transparent", // se sobrescribe en el estilo dinámico
+      borderColor: "transparent",
     },
     changePasswordButton: {
-      minWidth: isDesktop ? 200 : undefined, // ancho mínimo cómodo para desktop
-      elevation: 2, // sutil sombra como en HTML
+      minWidth: isDesktop ? 200 : undefined,
+      elevation: 2,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,

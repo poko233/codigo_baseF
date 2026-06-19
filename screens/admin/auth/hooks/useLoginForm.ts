@@ -1,4 +1,4 @@
-// screens/auth/hooks/useLoginForm.ts
+// screens/admin/auth/hooks/useLoginForm.ts
 import { getTabsForRoles } from "@/utils/roleBasedTabs";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,26 +16,42 @@ const validateField = (name: keyof LoginRequest, value: string): string => {
       if (!value) return "Contraseña requerida";
       if (value.length < 6) return "Mínimo 6 caracteres";
       return "";
+    case "empresa":
+      if (!value.trim()) return "Empresa no especificada";
+      return "";
     default:
       return "";
   }
 };
 
-export function useLoginForm() {
-  const { login } = useAuth();
-  const [form, setForm] = useState<LoginRequest>({ usuario: "", password: "" });
+interface UseLoginFormOptions {
+  /** Nombre de la empresa tomado de la URL. */
+  empresa: string;
+}
+
+export function useLoginForm({ empresa }: UseLoginFormOptions) {
+  const { login, user } = useAuth();
+  const [form, setForm] = useState<LoginRequest>({
+    usuario: "",
+    password: "",
+    empresa,
+  });
   const [errors, setErrors] = useState<ValidationErrors<LoginRequest>>({});
   const [touched, setTouched] = useState<
     Partial<Record<keyof LoginRequest, boolean>>
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const { user } = useAuth();
 
-  // Si ya hay sesión, redirigir a perfil directamente
+  // Si el parámetro empresa cambia (raro, pero posible), actualizar el form
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, empresa }));
+  }, [empresa]);
+
+  // Si ya hay sesión, redirigir a la pantalla principal
   useEffect(() => {
     if (user) {
-      const tabs = getTabsForRoles(user.roles);
+      const tabs = getTabsForRoles(user.roles.map((r) => r.rol));
       const homeRoute = tabs.length > 0 ? `/${tabs[0].name}` : "/perfil";
       router.replace(homeRoute as any);
     }
@@ -43,8 +59,8 @@ export function useLoginForm() {
 
   const handleChange = useCallback(
     (field: keyof LoginRequest) => (value: string) => {
-      // Eliminar cualquier espacio en blanco del texto ingresado
-      const sanitized = value.replace(/\s/g, "");
+      // Eliminar espacios en blanco para usuario y password
+      const sanitized = field === "empresa" ? value : value.replace(/\s/g, "");
       setForm((prev) => ({ ...prev, [field]: sanitized }));
       if (touched[field]) {
         const error = validateField(field, sanitized);
@@ -70,9 +86,8 @@ export function useLoginForm() {
       const error = validateField(key, form[key]);
       if (error) newErrors[key] = error;
     });
-
     setErrors(newErrors);
-    setTouched({ usuario: true, password: true });
+    setTouched({ usuario: true, password: true, empresa: true });
     return Object.keys(newErrors).length === 0;
   }, [form]);
 
@@ -84,11 +99,9 @@ export function useLoginForm() {
 
     try {
       const response = await loginUser(form);
-      const userData = await login(response.token);
-      // Calcular la ruta de inicio según los roles
-      const tabs = getTabsForRoles(userData.roles);
-      const homeRoute = tabs.length > 0 ? `/${tabs[0].name}` : "/perfil";
-      router.replace(homeRoute as any);
+      // login del contexto: guarda token, empresaId, empresaNombre y carga /me
+      await login(response.token, response.empresa.id, response.empresa.nombre);
+      // La redirección se maneja en el efecto que observa `user`
     } catch (err: any) {
       const message = err?.message || "Error inesperado";
       setServerError(message);
@@ -101,7 +114,8 @@ export function useLoginForm() {
     return Boolean(
       Object.values(errors).every((e) => !e) &&
       form.usuario.trim() &&
-      form.password,
+      form.password &&
+      form.empresa.trim(),
     );
   }, [errors, form]);
 

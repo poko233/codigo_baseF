@@ -1,9 +1,11 @@
 import Toast from "react-native-toast-message";
-import { getToken } from "../storage/secureStorage";
+import {
+  getEmpresaId,
+  getSucursalId,
+  getToken,
+} from "../storage/secureStorage";
 
-export const BASE_URL =
-  // process.env.EXPO_PUBLIC_API_URL || "https://tecnologico.metasoft-bolivia.com";
-  process.env.EXPO_PUBLIC_API_URL;
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 async function parseErrorMessage(
   res: Response,
@@ -37,6 +39,13 @@ async function request<T>(
   if (authenticated) {
     const token = await getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    // Cabeceras multi‑tenant obligatorias
+    const empresaId = await getEmpresaId();
+    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+
+    const sucursalId = await getSucursalId();
+    if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
   }
 
   let res: Response;
@@ -120,19 +129,25 @@ export const httpClient = {
   async postFormData<T>(url: string, formData: FormData): Promise<T> {
     const token = await getToken();
 
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const empresaId = await getEmpresaId();
+    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+
+    const sucursalId = await getSucursalId();
+    if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
+
     const response = await fetch(`${BASE_URL}${url}`, {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
-      },
+      headers,
       body: formData,
     });
 
     const text = await response.text();
-
     let data: any = null;
-
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
@@ -146,22 +161,30 @@ export const httpClient = {
         errors: data?.errors,
       };
     }
-
     return data;
   },
+
   async _rawFetch(path: string, accept: string): Promise<Response> {
     const token = await getToken();
+    const headers: Record<string, string> = { Accept: accept };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const empresaId = await getEmpresaId();
+    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+
+    const sucursalId = await getSucursalId();
+    if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
+
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "GET",
-      headers: {
-        Accept: accept,
-        Authorization: token ? `Bearer ${token}` : "",
-      },
+      headers,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let msg = "Error al descargar";
-      try { msg = JSON.parse(text).message ?? msg; } catch {}
+      try {
+        msg = JSON.parse(text).message ?? msg;
+      } catch {}
       throw new Error(msg);
     }
     return res;

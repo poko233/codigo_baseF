@@ -44,11 +44,12 @@ export const SidebarHeader = () => {
 
   if (!user) return null;
 
-  const { nombres, apellido, foto, roles } = user;
+  const { nombres, primer_apellido, segundo_apellido, foto } = user;
+  const apellido = `${primer_apellido || ""} ${segundo_apellido || ""}`.trim();
 
   const initials = () => {
     const n = nombres?.charAt(0) || "";
-    const a = apellido?.charAt(0) || "";
+    const a = primer_apellido?.charAt(0) || "";
     return (n + a).toUpperCase() || "U";
   };
 
@@ -103,7 +104,6 @@ export const SidebarHeader = () => {
               </View>
             )}
           </View>
-          {/* Punto verde */}
           <View
             style={{
               position: "absolute",
@@ -119,7 +119,6 @@ export const SidebarHeader = () => {
           />
         </View>
 
-        {/* Nombre */}
         <Text
           style={{
             fontSize: 13,
@@ -134,7 +133,6 @@ export const SidebarHeader = () => {
           {nombres} {apellido}
         </Text>
 
-        {/* Roles con tooltip individual */}
         <View
           style={{
             flexDirection: "row",
@@ -144,7 +142,8 @@ export const SidebarHeader = () => {
             justifyContent: "center",
           }}
         >
-          {roles.map((role) => {
+          {user.roles.map((r) => {
+            const role = r.rol;
             const Icon = roleIconMap[role];
             const color = roleColorMap[role] || theme.colors.primary;
             const isHovered = hoveredRole === role;
@@ -164,7 +163,6 @@ export const SidebarHeader = () => {
                 onPress={() => setHoveredRole(isHovered ? null : role)}
                 style={{ position: "relative" }}
               >
-                {/* Tooltip individual */}
                 {isHovered && (
                   <Animated.View
                     entering={FadeIn.duration(150)}
@@ -200,7 +198,6 @@ export const SidebarHeader = () => {
                   </Animated.View>
                 )}
 
-                {/* Círculo del rol */}
                 <View
                   style={{
                     width: BADGE_SIZE,
