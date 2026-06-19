@@ -15,9 +15,16 @@ export interface LoginResponse {
   message: string;
 }
 
+export interface SucursalEnEmpresa {
+  id: number;
+  sucursal: string;
+  estado: string;
+}
+
 export interface EmpresaDisponible {
   id: number;
   empresa: string;
+  sucursales: SucursalEnEmpresa[];
 }
 
 export interface RolUsuario {
@@ -27,16 +34,7 @@ export interface RolUsuario {
   estado: string;
 }
 
-export interface SucursalUsuario {
-  id: number;
-  sucursal: string;
-  id_empresa: number;
-  estado: string;
-}
-
-/**
- * Usuario unificado: exactamente lo que devuelve /api/me en "data".
- */
+// Usuario unificado (exactamente lo que devuelve /api/me en "data")
 export interface Usuario {
   id: number;
   usuario: string;
@@ -53,29 +51,10 @@ export interface Usuario {
   fecha_nac: string;
   foto: string | null;
   codigo_qr: string | null;
-  empresas: EmpresaDisponible[];
+  empresas: EmpresaDisponible[]; // ahora cada empresa tiene sucursales
   roles: RolUsuario[];
-  sucursales: SucursalUsuario[];
 }
 
-export interface RegisterRequest {
-  usuario: string;
-  password: string;
-  ci: string;
-  nombres: string;
-  apellidos: string;
-  genero: "MASCULINO" | "FEMENINO";
-  fecha_nac: string;
-  email: string; // opcional, se envía vacío si no se ingresa
-  telefono: string;
-  celular: string;
-  roles: string[];
-}
-
-export type RegisterResponse = LoginResponse;
-/**
- * Errores de validación del formulario de login.
- */
 export type ValidationErrors<T> = Partial<Record<keyof T, string>>;
 
 // Los tipos de registro se mantienen para no romper otras pantallas,

@@ -27,7 +27,9 @@ export const InformacionPersonal = () => {
     genero,
     fechaNacimiento,
   } = usePerfilData();
-  const styles = getStyles(theme);
+
+  // Pasamos isDesktop a los estilos para manejar la grilla
+  const styles = getStyles(theme, isDesktop);
 
   return (
     <MotiView
@@ -38,63 +40,50 @@ export const InformacionPersonal = () => {
     >
       <Text style={styles.title}>Información Personal</Text>
 
-      {/* Contenedor principal en dos columnas (desktop) o una columna (móvil) */}
-      <View style={[styles.columns, isDesktop && styles.columnsDesktop]}>
-        {/* Columna izquierda */}
-        <View style={styles.column}>
-          {/* Correo Electrónico */}
+      {/* Contenedor tipo Grid con flexWrap */}
+      <View style={styles.gridContainer}>
+        <View style={styles.gridItem}>
           <Field
             label="Correo Electrónico"
             icon={Mail}
             value={correo}
             theme={theme}
           />
-          {/* Teléfono Fijo */}
+        </View>
+        <View style={styles.gridItem}>
+          {/* Dirección ahora usa el componente estándar para asegurar simetría */}
+          <Field
+            label="Dirección"
+            icon={MapPin}
+            value={direccion}
+            theme={theme}
+          />
+        </View>
+        <View style={styles.gridItem}>
           <Field
             label="Teléfono Fijo"
             icon={Phone}
             value={telefono}
             theme={theme}
           />
-          {/* Carnet de Identidad */}
-          <Field
-            label="Carnet de Identidad"
-            icon={BadgeCheck}
-            value={ciExpedido}
-            theme={theme}
-          />
-          {/* Género */}
-          <Field
-            label="Género"
-            icon={VenusAndMars}
-            value={genero}
-            theme={theme}
-          />
         </View>
-
-        {/* Columna derecha */}
-        <View style={styles.column}>
-          {/* Dirección (con altura mayor) */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Dirección</Text>
-            <View style={[styles.fieldBox, styles.fieldBoxLarge]}>
-              <MapPin
-                size={16}
-                color={theme.colors.textSecondary}
-                style={{ marginTop: 2 }}
-              />
-              <Text style={styles.fieldText}>{direccion}</Text>
-            </View>
-          </View>
-
-          {/* Celular */}
+        <View style={styles.gridItem}>
           <Field
             label="Celular"
             icon={Smartphone}
             value={celular}
             theme={theme}
           />
-          {/* Fecha de Nacimiento */}
+        </View>
+        <View style={styles.gridItem}>
+          <Field
+            label="Carnet de Identidad"
+            icon={BadgeCheck}
+            value={ciExpedido}
+            theme={theme}
+          />
+        </View>
+        <View style={styles.gridItem}>
           <Field
             label="Fecha de Nacimiento"
             icon={Cake}
@@ -125,7 +114,11 @@ const Field: React.FC<{
         },
       ]}
     >
-      <Icon size={16} color={theme.colors.textSecondary} />
+      <Icon
+        size={16}
+        color={theme.colors.textSecondary}
+        style={{ marginTop: 2 }}
+      />
       <Text style={[fieldStyles.fieldText, { color: theme.colors.text }]}>
         {value || "—"}
       </Text>
@@ -135,30 +128,26 @@ const Field: React.FC<{
 
 const fieldStyles = StyleSheet.create({
   field: {
+    width: "100%",
     marginBottom: 16,
-    flex: 1,
-    minWidth: 200,
   },
   label: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#6B7280", // se mantiene el estilo del mockup
+    color: "#6B7280",
     letterSpacing: 1,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   fieldBox: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start", // Permite que textos largos fluyan naturalmente hacia abajo
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-  },
-  fieldBoxLarge: {
-    minHeight: 60,
-    alignItems: "flex-start",
+    minHeight: 44, // Unificamos la altura mínima para todos los campos
   },
   fieldText: {
     fontSize: 14,
@@ -167,7 +156,7 @@ const fieldStyles = StyleSheet.create({
 });
 
 /* ─── Estilos principales ─────────────────── */
-const getStyles = (theme: any) =>
+const getStyles = (theme: any, isDesktop: boolean) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.colors.card,
@@ -187,46 +176,13 @@ const getStyles = (theme: any) =>
       color: theme.colors.text,
       marginBottom: 16,
     },
-    columns: {
-      flexDirection: "column",
-      gap: 8,
-    },
-    columnsDesktop: {
+    gridContainer: {
       flexDirection: "row",
-      gap: 24,
+      flexWrap: "wrap",
+      justifyContent: "space-between",
     },
-    column: {
-      flex: 1,
-    },
-    field: {
-      marginBottom: 16,
-    },
-    label: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: theme.colors.textSecondary,
-      letterSpacing: 1,
-      textTransform: "uppercase",
-      marginBottom: 4,
-    },
-    fieldBox: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor: theme.colors.background,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.colors.border + "30",
-    },
-    fieldBoxLarge: {
-      minHeight: 60,
-      alignItems: "flex-start",
-    },
-    fieldText: {
-      fontSize: 14,
-      color: theme.colors.text,
-      flex: 1,
+    gridItem: {
+      // 48% fuerza exactamente dos columnas en desktop, 100% en móvil
+      width: isDesktop ? "48%" : "100%",
     },
   });

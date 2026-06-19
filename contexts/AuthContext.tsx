@@ -57,20 +57,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set());
   const { fetchModulos, clearModulos } = useModulesStore();
 
-  // Derivado de user.roles para compatibilidad
   const roles = user ? user.roles.map((r) => r.rol) : [];
 
   const hasRole = useCallback((role: string) => roles.includes(role), [roles]);
-
   const hasAnyRole = useCallback(
     (rolesToCheck: string[]) => rolesToCheck.some((r) => roles.includes(r)),
     [roles],
+  );
+
+  // Selecciona la primera sucursal de una empresa dada y la persiste.
+  const selectDefaultSucursalForEmpresa = useCallback(
+    async (empId: number) => {
+      if (!user) return;
+      const empresa = user.empresas.find((e) => e.id === empId);
+      if (empresa && empresa.sucursales.length > 0) {
+        const firstId = empresa.sucursales[0].id;
+        await saveSucursalId(firstId);
+        setSucursalId(firstId);
+      } else {
+        await saveSucursalId(null);
+        setSucursalId(null);
+      }
+    },
+    [user],
   );
 
   const loadProfile = useCallback(async () => {
     try {
       const userData = await fetchMe();
       setUser(userData);
+
+      // Determinar empresa activa (viene del header o se restauró)
+      const currentEmpresaId = empresaId ?? userData.empresas[0]?.id ?? null;
+      if (currentEmpresaId && !empresaId) {
+        setEmpresaId(currentEmpresaId);
+        const nombre =
+          userData.empresas.find((e) => e.id === currentEmpresaId)?.empresa ??
+          "";
+        setEmpresaNombre(nombre);
+        await saveEmpresaNombre(nombre);
+        await saveEmpresaId(currentEmpresaId);
+      }
+
+      // Seleccionar sucursal por defecto de la empresa activa
+      const empresaActiva = userData.empresas.find(
+        (e) => e.id === (currentEmpresaId ?? empresaId),
+      );
+      if (empresaActiva && empresaActiva.sucursales.length > 0) {
+        const storedSucursal = await getSucursalId();
+        const exists =
+          storedSucursal &&
+          empresaActiva.sucursales.some((s) => s.id === storedSucursal);
+        if (!exists) {
+          const firstId = empresaActiva.sucursales[0].id;
+          await saveSucursalId(firstId);
+          setSucursalId(firstId);
+        } else {
+          setSucursalId(storedSucursal);
+        }
+      } else {
+        await saveSucursalId(null);
+        setSucursalId(null);
+      }
 
       await fetchModulos();
       const moduleRoutes = useModulesStore.getState().allowedRoutes;
@@ -90,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAllowedRoutes(new Set());
       throw new Error("Sesión inválida");
     }
-  }, [fetchModulos, clearModulos]);
+  }, [fetchModulos, clearModulos, empresaId]);
 
   // Restauración de sesión al abrir la app
   useEffect(() => {
@@ -103,11 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const storedNombre = await getEmpresaNombre();
           setEmpresaNombre(storedNombre);
           const storedSucursal = await getSucursalId();
-          setSucursalId(storedSucursal);
+          setSucursalId(storedSucursal); // se validará en loadProfile
           await loadProfile();
         }
       } catch {
-        // loadProfile ya limpia todo si falla
+        // loadProfile limpia todo
       } finally {
         setLoading(false);
       }
@@ -121,9 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await saveEmpresaNombre(empNombre);
       setEmpresaId(empId);
       setEmpresaNombre(empNombre);
-      setSucursalId(null);
-      await saveSucursalId(null);
-
+      setSucursalId(null); // se establecerá en loadProfile
       await loadProfile();
 
       Toast.show({
@@ -152,17 +198,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (newEmpresaId: number, newEmpresaNombre: string) => {
       await saveEmpresaId(newEmpresaId);
       await saveEmpresaNombre(newEmpresaNombre);
-      await saveSucursalId(null);
       setEmpresaId(newEmpresaId);
       setEmpresaNombre(newEmpresaNombre);
-      setSucursalId(null);
+
+      // Seleccionar la primera sucursal de la nueva empresa (local)
+      if (user) {
+        const empresa = user.empresas.find((e) => e.id === newEmpresaId);
+        if (empresa && empresa.sucursales.length > 0) {
+          const firstId = empresa.sucursales[0].id;
+          await saveSucursalId(firstId);
+          setSucursalId(firstId);
+        } else {
+          await saveSucursalId(null);
+          setSucursalId(null);
+        }
+      }
 
       clearModulos();
       await fetchModulos();
       const moduleRoutes = useModulesStore.getState().allowedRoutes;
       setAllowedRoutes(new Set([...moduleRoutes]));
     },
-    [clearModulos, fetchModulos],
+    [user, clearModulos, fetchModulos],
   );
 
   const changeSucursal = useCallback(async (newSucursalId: number | null) => {
