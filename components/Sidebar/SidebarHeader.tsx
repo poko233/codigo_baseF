@@ -10,7 +10,7 @@ import {
 import React, { useState } from "react";
 import { Image, Platform, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useTheme } from "../../theme/useTheme";
 
 const roleIconMap: Record<string, React.ComponentType<any>> = {

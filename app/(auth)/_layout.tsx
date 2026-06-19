@@ -1,7 +1,7 @@
 // app/(auth)/_layout.tsx
 import { Redirect, Slot } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useTheme } from "../../theme/useTheme";
 
 export default function AuthLayout() {

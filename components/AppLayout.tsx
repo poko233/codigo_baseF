@@ -1,7 +1,7 @@
 // components/AppLayout.tsx
 import React from "react";
 import { View } from "react-native";
-import { useAuth } from "../contexts/AuthContext"; // añadido
+import { useAuth } from "@/store/authStore";
 import { useResponsive } from "../hooks/useResponsive";
 import { useTheme } from "../theme/useTheme";
 import { MobileHeader } from "./MobileHeader";

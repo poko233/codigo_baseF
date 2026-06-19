@@ -1,5 +1,5 @@
 // screens/admin/perfil/hooks/usePerfilData.ts
-import { useAuth } from "../../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 
 export function usePerfilData() {
   const { user } = useAuth();

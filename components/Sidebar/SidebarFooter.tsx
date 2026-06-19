@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import logoImg from "../../assets/images/logo_texto.png";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useMobileDrawer } from "../../contexts/MobileDrawerContext"; // ← añadido
 import { useModulesStore } from "../../store/modulesStore"; // ← añadido
 import { useTheme } from "../../theme/useTheme";

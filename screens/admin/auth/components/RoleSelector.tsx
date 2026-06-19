@@ -1,7 +1,7 @@
 // screens/auth/components/RoleSelector.tsx
 import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { useAuth } from "../../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useTheme } from "../../../../theme/useTheme";
 
 interface RoleSelectorProps {

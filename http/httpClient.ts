@@ -1,9 +1,6 @@
 import Toast from "react-native-toast-message";
-import {
-  getEmpresaId,
-  getSucursalId,
-  getToken,
-} from "../storage/secureStorage";
+import { getToken } from "../storage/secureStorage";
+import { useAuthStore } from "../store/authStore";
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -16,9 +13,8 @@ async function parseErrorMessage(
     const json = JSON.parse(text);
     if (json.message) return json.message;
     if (json.error) return json.error;
-    if (json.errors) {
+    if (json.errors)
       return "Algunos datos ya se encuentran registrados o son inválidos.";
-    }
     return fallback;
   } catch {
     return text || fallback;
@@ -40,11 +36,8 @@ async function request<T>(
     const token = await getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    // Cabeceras multi‑tenant obligatorias
-    const empresaId = await getEmpresaId();
+    const { empresaId, sucursalId } = useAuthStore.getState();
     if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
-
-    const sucursalId = await getSucursalId();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
   }
 
@@ -134,10 +127,8 @@ export const httpClient = {
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const empresaId = await getEmpresaId();
+    const { empresaId, sucursalId } = useAuthStore.getState();
     if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
-
-    const sucursalId = await getSucursalId();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
 
     const response = await fetch(`${BASE_URL}${url}`, {
@@ -169,10 +160,8 @@ export const httpClient = {
     const headers: Record<string, string> = { Accept: accept };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const empresaId = await getEmpresaId();
+    const { empresaId, sucursalId } = useAuthStore.getState();
     if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
-
-    const sucursalId = await getSucursalId();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
 
     const res = await fetch(`${BASE_URL}${path}`, {

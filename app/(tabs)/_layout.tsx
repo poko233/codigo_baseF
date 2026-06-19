@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router/tabs";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useResponsive } from "../../hooks/useResponsive";
 import { useTheme } from "../../theme/useTheme";
 import { TabDefinition, getTabsForRoles } from "../../utils/roleBasedTabs";
@@ -20,7 +20,7 @@ export default function TabsLayout() {
   const { isDesktop } = useResponsive();
 
   // Tabs que el usuario SÍ puede ver según sus roles
-  const allowedTabs = getTabsForRoles(user?.roles ?? []);
+  const allowedTabs = getTabsForRoles(user?.roles.map((r) => r.rol) || []);
   const allowedNames = new Set(allowedTabs.map((t) => t.name));
 
   return (

@@ -2,7 +2,7 @@
 import { getTabsForRoles } from "@/utils/roleBasedTabs";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { loginUser } from "../services/auth.service";
 import type { LoginRequest, ValidationErrors } from "../types/auth.types";
 

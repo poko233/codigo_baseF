@@ -2,23 +2,35 @@
 import { injectGlobalScrollbar } from "@/components/globalScrollbar";
 import { Slot, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { MobileDrawer } from "../components/MobileDrawer";
 import { Toaster } from "../components/Toaster";
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { MobileDrawerProvider } from "../contexts/MobileDrawerContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import "../global.css";
 import { useTheme } from "../theme/useTheme";
+import { useAuthStore } from "../store/authStore"; // ← nuevo
+
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const initialize = useAuthStore((s) => s.initialize);
+  const loading = useAuthStore((s) => s.loading);
+
+  useEffect(() => {
+    initialize();
+  }, []);
+
+  if (loading) return null;
+
+  return <>{children}</>;
+}
 
 function AppContent() {
   const { theme } = useTheme();
   const pathname = usePathname();
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
 
-  // El drawer solo se monta si hay usuario, no estamos en la raíz y NO es estudiante
-  const isStudent = user?.roles?.includes("Estudiante");
+  const isStudent = user?.roles?.some((r) => r.rol === "Estudiante");
   const showDrawer = !!user && pathname !== "/" && !isStudent;
 
   React.useEffect(() => {
@@ -44,11 +56,11 @@ function AppContent() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <ThemeProvider>
+      <ThemeProvider>
+        <AuthInitializer>
           <AppContent />
-        </ThemeProvider>
-      </AuthProvider>
+        </AuthInitializer>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

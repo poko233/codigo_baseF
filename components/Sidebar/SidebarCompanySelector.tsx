@@ -14,7 +14,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useTheme } from "../../theme/useTheme";
 
 if (
@@ -46,7 +46,7 @@ export const SidebarCompanySelector: React.FC = () => {
     if (!empresaId || !user) return [];
     const empresa = user.empresas.find((e) => e.id === empresaId);
     return empresa?.sucursales ?? [];
-  }, [user, empresaId]);
+  }, [empresaId, user?.empresas]); // user.empresas es más estable que user
 
   const showEmpresaSelector = empresas.length > 1;
   const showSucursalSelector = sucursalesActiva.length > 1;

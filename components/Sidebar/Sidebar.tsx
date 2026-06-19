@@ -20,7 +20,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useResponsive } from "../../hooks/useResponsive";
 import {
   MiFormulario,

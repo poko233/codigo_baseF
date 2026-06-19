@@ -2,7 +2,7 @@
 import { Redirect, usePathname } from "expo-router";
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useTheme } from "../theme/useTheme";
 
 interface ProtectedRouteProps {

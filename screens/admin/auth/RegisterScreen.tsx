@@ -4,7 +4,7 @@ import React from "react";
 import { Platform, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { useTheme } from "../../../theme/useTheme";
 import { AuthInput } from "./components/AuthInput";

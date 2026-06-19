@@ -2,7 +2,7 @@
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import Toast from "react-native-toast-message";
-import { useAuth } from "../../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { registerUser } from "../services/auth.service";
 import type { RegisterRequest, ValidationErrors } from "../types/auth.types";
 

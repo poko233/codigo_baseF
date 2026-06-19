@@ -58,7 +58,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { fetchModulos, clearModulos } = useModulesStore();
 
   const roles = user ? user.roles.map((r) => r.rol) : [];
-
+  // Dentro de AuthProvider, después de las declaraciones de estado
+  useEffect(() => {
+    if (__DEV__) {
+      console.log("[AuthContext] Estado actualizado:", {
+        user: user
+          ? { id: user.id, usuario: user.usuario, roles: roles }
+          : null,
+        loading,
+        empresaId,
+        empresaNombre,
+        sucursalId,
+        roles,
+        allowedRoutes: [...allowedRoutes],
+        isAdmin: roles.includes("Administrador"),
+      });
+    }
+  }, [
+    user,
+    loading,
+    empresaId,
+    empresaNombre,
+    sucursalId,
+    roles,
+    allowedRoutes,
+  ]);
   const hasRole = useCallback((role: string) => roles.includes(role), [roles]);
   const hasAnyRole = useCallback(
     (rolesToCheck: string[]) => rolesToCheck.some((r) => roles.includes(r)),

@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { useAuth } from "../../../../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useMobileDrawer } from "../../../../contexts/MobileDrawerContext";
 import { useResponsive } from "../../../../hooks/useResponsive";
 import { useModulesStore } from "../../../../store/modulesStore";

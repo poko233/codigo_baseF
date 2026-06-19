@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "@/store/authStore";
 import { useMobileDrawer } from "../contexts/MobileDrawerContext";
 import { useTheme } from "../theme/useTheme";
 
