@@ -1,31 +1,32 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Toast from "react-native-toast-message";
-import { CK, configCache } from "../../../cache/configCache";
-import { useAuthStore } from "../../../store/authStore";
+import { Alert, Platform } from "react-native";
+import { CK, configCache, TTL } from "../../../cache/configCache";
 import { useModulesStore } from "../../../store/modulesStore";
 import { adminService } from "../services/admin.service";
 import { moduloService } from "../modulos/services/modulo.service";
-import { Formulario, Modulo } from "../modulos/types/modulo.types";
 import { rolService } from "../rol/services/rol.service";
-import { RolConPermisos, Rol } from "../rol/types/rol.types";
-import { AdminFormulario } from "../types/admin.types";
+import type { Formulario, Modulo } from "../modulos/types/modulo.types";
+import type { RolConPermisos } from "../rol/types/rol.types";
+import type { AdminFormulario } from "../types/admin.types";
+import type { MatrizTodos, PermisoSync } from "./types";
 
-export type MatrizTodos = Record<number, Record<number, Set<number>>>;
+// ─── Helpers puros (sin estado, fáciles de testear) ──────────────────────────
 
-function clonarMatriz(m: MatrizTodos): MatrizTodos {
+export function clonarMatriz(m: MatrizTodos): MatrizTodos {
   const out: MatrizTodos = {};
   for (const ridStr in m) {
     const rid = Number(ridStr);
     out[rid] = {};
     for (const fidStr in m[rid]) {
-      const fid = Number(fidStr);
-      out[rid][fid] = new Set(m[rid][fid]);
+      out[rid][Number(fidStr)] = new Set(m[rid][Number(fidStr)]);
     }
   }
   return out;
 }
 
-function matricesIguales(a: MatrizTodos, b: MatrizTodos): boolean {
+export function matricesIguales(a: MatrizTodos, b: MatrizTodos): boolean {
   const ridsA = Object.keys(a).map(Number);
   const ridsB = Object.keys(b).map(Number);
   if (ridsA.length !== ridsB.length) return false;
@@ -36,21 +37,38 @@ function matricesIguales(a: MatrizTodos, b: MatrizTodos): boolean {
     for (const fid of fidsA) {
       const sa = a[rid][fid];
       const sb = b[rid]?.[fid];
-      if (!sb) return false;
-      if (sa.size !== sb.size) return false;
+      if (!sb || sa.size !== sb.size) return false;
       for (const v of sa) if (!sb.has(v)) return false;
     }
   }
   return true;
 }
 
-function construirModulosConForms(
+// Convierte la respuesta de /roles/permisos a la matriz interna
+export function rolesPermisosAMatriz(rolesConPermisos: RolConPermisos[]): MatrizTodos {
+  const m: MatrizTodos = {};
+  for (const rol of rolesConPermisos) {
+    m[rol.id] = {};
+    for (const modulo of rol.permisos ?? []) {
+      for (const form of modulo.formularios ?? []) {
+        m[rol.id][form.id_formulario] = new Set(
+          form.acciones
+            .map((a) => a.id_accion ?? (a as any).id ?? 0)
+            .filter(Boolean),
+        );
+      }
+    }
+  }
+  return m;
+}
+
+// Enriquece módulos con sus formularios cuando el endpoint /modulos no los trae
+export function enriquecerModulos(
   modulosData: Modulo[],
-  todosLosFormularios: AdminFormulario[],
+  todosFormularios: AdminFormulario[],
 ): Modulo[] {
-  // Mapa moduloId → formularios desde /api/formularios
   const formsPorModulo = new Map<number, Formulario[]>();
-  for (const f of todosLosFormularios) {
+  for (const f of todosFormularios) {
     for (const mod of f.modulos ?? []) {
       if (!formsPorModulo.has(mod.id)) formsPorModulo.set(mod.id, []);
       formsPorModulo.get(mod.id)!.push({
@@ -62,104 +80,64 @@ function construirModulosConForms(
       });
     }
   }
-
   return modulosData.map((m): Modulo => {
     if (m.formularios && m.formularios.length > 0) return m;
     const forms = formsPorModulo.get(m.id);
-    return forms && forms.length > 0 ? { ...m, formularios: forms } : m;
+    return forms?.length ? { ...m, formularios: forms } : m;
   });
 }
 
-function permisosAMatrizFila(rp: RolConPermisos): Record<number, Set<number>> {
-  const fila: Record<number, Set<number>> = {};
-  for (const mod of rp.permisos ?? []) {
-    for (const form of mod.formularios ?? []) {
-      fila[form.id_formulario] = new Set(
-        form.acciones
-          .map((a) => a.id_accion ?? (a as any).id ?? 0)
-          .filter(Boolean),
-      );
-    }
-  }
-  return fila;
-}
+// ─── Hook principal ───────────────────────────────────────────────────────────
 
 export function usePermisos() {
-  const [roles, setRoles] = useState<Rol[]>([]);
+  const [roles, setRoles] = useState<RolConPermisos[]>([]);
   const [modulos, setModulos] = useState<Modulo[]>([]);
   const [matriz, setMatriz] = useState<MatrizTodos>({});
-  // IDs de roles cuyos permisos aún están cargando
-  const [loadingRoles, setLoadingRoles] = useState<Set<number>>(new Set());
-  const [loadingBase, setLoadingBase] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
 
   const matrizInicialRef = useRef<MatrizTodos>({});
-  // Referencia para cancelar cargas si el componente se desmonta
   const canceladoRef = useRef(false);
 
   const cargar = useCallback(async () => {
     canceladoRef.current = false;
-    setLoadingBase(true);
+    setLoading(true);
     setMatriz({});
     matrizInicialRef.current = {};
 
     try {
-      // ── FASE 1: 3 llamadas paralelas — pantalla visible en < 1 llamada ──
-      const [rolesData, modulosData, todosLosFormularios] = await Promise.all([
-        rolService.getAll(),
-        moduloService.getAll(),
-        adminService.getFormularios(),
+      // ── UNA sola tanda de 3 llamadas paralelas ──────────────────────────
+      // Antes eran 3 + N (una por cada rol). Ahora son siempre 3 en total.
+      const [rolesConPermisos, modulosData, todosFormularios] = await Promise.all([
+        rolService.getAllConPermisos(),    // GET /roles/permisos  ← el nuevo endpoint
+        moduloService.getAll(),            // GET /modulos
+        adminService.getFormularios(),     // GET /formularios
       ]);
 
       if (canceladoRef.current) return;
 
-      const modulosEnriquecidos = construirModulosConForms(modulosData, todosLosFormularios);
+      // Construir matriz desde la respuesta agrupada
+      const nuevaMatriz = rolesPermisosAMatriz(rolesConPermisos);
+
+      // Enriquecer módulos con formularios si hace falta
+      const modulosEnriquecidos = enriquecerModulos(modulosData, todosFormularios);
       const modulosConForms = modulosEnriquecidos.filter(
-        (mo) => (mo.formularios?.length ?? 0) > 0,
+        (m) => (m.formularios?.length ?? 0) > 0,
       );
 
-      setRoles(rolesData);
+      setRoles(rolesConPermisos);
       setModulos(modulosConForms.length > 0 ? modulosConForms : modulosEnriquecidos);
-      setLoadingRoles(new Set(rolesData.map((r) => r.id)));
-      setLoadingBase(false); // ← pantalla se muestra aquí, con skeletons por tarjeta
+      setMatriz(nuevaMatriz);
 
-      // ── FASE 2: permisos de cada rol en paralelo, actualizando la UI a medida que llegan ──
-      await Promise.all(
-        rolesData.map(async (rol) => {
-          try {
-            const rp = await rolService.getPermisos(rol.id);
-            if (canceladoRef.current) return;
-
-            const fila = permisosAMatrizFila(rp);
-
-            setMatriz((prev) => {
-              const next = clonarMatriz(prev);
-              next[rol.id] = fila;
-              return next;
-            });
-            matrizInicialRef.current[rol.id] = {};
-            for (const fid in fila) {
-              matrizInicialRef.current[rol.id][Number(fid)] = new Set(fila[Number(fid)]);
-            }
-          } catch {
-            // Si falla un rol, dejamos su fila vacía (no bloquea el resto)
-          } finally {
-            if (!canceladoRef.current) {
-              setLoadingRoles((prev) => {
-                const next = new Set(prev);
-                next.delete(rol.id);
-                return next;
-              });
-            }
-          }
-        }),
-      );
+      // Guardar copia inicial para detectar cambios
+      matrizInicialRef.current = clonarMatriz(nuevaMatriz);
     } catch (err: any) {
       if (!canceladoRef.current) {
-        setLoadingBase(false);
-        Toast.show({ type: "error", text1: "Error al cargar", text2: err?.message });
+        Toast.show({ type: "error", text1: "Error al cargar permisos", text2: err?.message });
       }
+    } finally {
+      if (!canceladoRef.current) setLoading(false);
     }
   }, []);
 
@@ -168,6 +146,7 @@ export function usePermisos() {
     return () => { canceladoRef.current = true; };
   }, [cargar]);
 
+  // ── Toggle de un checkbox ─────────────────────────────────────────────────
   function toggle(idRol: number, idFormulario: number, idAccion: number) {
     setMatriz((prev) => {
       const next = clonarMatriz(prev);
@@ -176,10 +155,10 @@ export function usePermisos() {
 
       if (set.has(idAccion)) {
         set.delete(idAccion);
-        if (idAccion === 1) set.clear();
+        if (idAccion === 1) set.clear(); // desmarcar Ver → limpiar todo el formulario
       } else {
         set.add(idAccion);
-        if (idAccion !== 1) set.add(1);
+        if (idAccion !== 1) set.add(1); // marcar cualquier acción → auto-agrega Ver
       }
 
       next[idRol][idFormulario] = set;
@@ -187,8 +166,7 @@ export function usePermisos() {
     });
   }
 
-  const hayCambios = !matricesIguales(matriz, matrizInicialRef.current);
-
+  // ── Guardar solo los roles que cambiaron ──────────────────────────────────
   async function guardar() {
     setSaving(true);
     try {
@@ -198,24 +176,45 @@ export function usePermisos() {
         return !matricesIguales({ [r.id]: a }, { [r.id]: b });
       });
 
+      if (rolesModificados.length === 0) {
+        Toast.show({ type: "info", text1: "Sin cambios que guardar" });
+        return;
+      }
+
+      // Manda un PUT por cada rol modificado (en paralelo)
       await Promise.all(
         rolesModificados.map(async (rol) => {
-          const permisos: { id_modulo: number; id_formulario: number; acciones: number[] }[] = [];
+          const permisos: PermisoSync[] = [];
+
           for (const modulo of modulos) {
             for (const form of modulo.formularios ?? []) {
               const acciones = [...(matriz[rol.id]?.[form.id] ?? [])];
               if (acciones.length > 0) {
-                permisos.push({ id_modulo: modulo.id, id_formulario: form.id, acciones });
+                permisos.push({
+                  id_modulo: modulo.id,
+                  id_formulario: form.id,
+                  acciones,
+                });
               }
             }
           }
+
           await rolService.syncPermisos(rol.id, permisos);
-          configCache.invalidate(CK.rolPermisos(rol.id));
+
+          // Invalida caché de este rol y del endpoint nuevo
+          configCache.invalidate(
+            CK.rolPermisos(rol.id),
+            CK.todosRolesPermisos(rol.id_empresa ?? 0),
+          );
         }),
       );
 
+      // Actualiza sidebar dinámico
       await useModulesStore.getState().fetchModulos();
+
+      // El estado inicial ahora es el estado actual
       matrizInicialRef.current = clonarMatriz(matriz);
+
       Toast.show({ type: "success", text1: "Permisos guardados correctamente" });
     } catch (err: any) {
       Toast.show({ type: "error", text1: "Error al guardar", text2: err?.message });
@@ -224,23 +223,45 @@ export function usePermisos() {
     }
   }
 
+  // ── Cancelar con confirmación si hay cambios ──────────────────────────────
+  function cancelar() {
+    if (!hayCambios) return;
+    if (Platform.OS === "web") {
+      if (globalThis.confirm?.("¿Descartar los cambios?")) cargar();
+      return;
+    }
+    Alert.alert(
+      "Descartar cambios",
+      "¿Quieres descartar los cambios no guardados?",
+      [
+        { text: "Seguir editando", style: "cancel" },
+        { text: "Descartar", style: "destructive", onPress: cargar },
+      ],
+    );
+  }
+
+  const hayCambios = !matricesIguales(matriz, matrizInicialRef.current);
+
   const rolesFiltrados = search.trim()
-    ? roles.filter((r) => r.rol.toLowerCase().includes(search.trim().toLowerCase()))
+    ? roles.filter((r) => r.rol.toLowerCase().includes(search.toLowerCase()))
     : roles;
 
   return {
+    // datos
     roles,
     rolesFiltrados,
     modulos,
     matriz,
-    loadingBase,
-    loadingRoles,
+    // estados
+    loading,
     saving,
     hayCambios,
     search,
+    // acciones
     setSearch,
     toggle,
     guardar,
+    cancelar,
     recargar: cargar,
   };
 }

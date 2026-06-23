@@ -142,7 +142,7 @@ export const SidebarHeader = () => {
             justifyContent: "center",
           }}
         >
-          {user.roles.map((r) => {
+          {[...new Map(user.roles.map((r) => [r.rol, r])).values()].map((r) => {
             const role = r.rol;
             const Icon = roleIconMap[role];
             const color = roleColorMap[role] || theme.colors.primary;

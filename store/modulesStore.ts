@@ -6,7 +6,7 @@ import { modulosEventBus } from "../screens/admin/events/modulosEventBus";
 export interface MiFormulario {
   id: number;
   nombre: string;
-  ruta: string;
+  ruta: string | null;
   icono: string | null;
   descripcion: string;
 }
@@ -23,7 +23,7 @@ export interface MiModulo {
 interface SidebarFormulario {
   id: number;
   formulario: string;
-  ruta: string;
+  ruta: string | null;
   icono?: string | null;
   descripcion?: string;
 }
@@ -85,11 +85,11 @@ export const useModulesStore = create<ModulesState>((set, get) => ({
       for (const modulo of modulos) {
         if (modulo.formularios.length > 0) {
           modulo.formularios.forEach((f) => {
-            const clean = f.ruta.replace(/\\/g, "/").replace(/\/+$/, "") || "/";
+            const clean = (f.ruta ?? '').replace(/\\/g, "/").replace(/\/+$/, "") || "/";
             routes.add(clean);
           });
         } else {
-          const slug = `/${modulo.nombre.toLowerCase().replace(/\s+/g, "-")}`;
+          const slug = `/${(modulo.nombre ?? '').toLowerCase().replace(/\s+/g, "-")}`;
           routes.add(slug);
         }
       }

@@ -26,6 +26,7 @@ export const CK = {
   formularios: (emp: number) => `formularios:${emp}`,
   sidebar:     (emp: number) => `sidebar:${emp}`,
   rolPermisos: (rol: number) => `rol-permisos:${rol}`,
+  todosRolesPermisos: (emp: number) => `todos-roles-permisos:${emp}`,
 };
 
 export const TTL = {

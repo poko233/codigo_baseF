@@ -1,6 +1,6 @@
 // screens/admin/auth/hooks/useLoginForm.ts
 import { getTabsForRoles } from "@/utils/roleBasedTabs";
-import { router } from "expo-router";
+import { router, useRootNavigationState } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/store/authStore";
 import { loginUser } from "../services/auth.service";
@@ -42,6 +42,7 @@ export function useLoginForm({ empresa }: UseLoginFormOptions) {
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const navState = useRootNavigationState();
 
   // Si el parámetro empresa cambia (raro, pero posible), actualizar el form
   useEffect(() => {
@@ -50,12 +51,14 @@ export function useLoginForm({ empresa }: UseLoginFormOptions) {
 
   // Si ya hay sesión, redirigir a la pantalla principal
   useEffect(() => {
-    if (user) {
-      const tabs = getTabsForRoles(user.roles.map((r) => r.rol));
-      const homeRoute = tabs.length > 0 ? `/${tabs[0].name}` : "/perfil";
-      router.replace(homeRoute as any);
-    }
-  }, [user]);
+    // ✅ Espera que el navigator esté montado Y que haya usuario
+    if (!navState?.key) return;
+    if (!user) return;
+
+    const tabs = getTabsForRoles(user.roles.map((r) => r.rol));
+    const homeRoute = tabs.length > 0 ? `/${tabs[0].name}` : "/perfil";
+    router.replace(homeRoute as any);
+  }, [user, navState?.key]); 
 
   const handleChange = useCallback(
     (field: keyof LoginRequest) => (value: string) => {

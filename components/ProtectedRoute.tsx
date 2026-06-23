@@ -51,7 +51,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     allowedRoutes.size > 0 &&
     !allowedRoutes.has(route) &&
     route !== "/" &&
-    route !== "/403"
+    route !== "/403" &&
+    route !== "/perfil"
   ) {
     return <Redirect href="/403" />;
   }

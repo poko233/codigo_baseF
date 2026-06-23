@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,12 +14,13 @@ import { Button } from "../../../components/ui/Button";
 import { Checkbox } from "../../../components/ui/Checkbox";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { SearchBar } from "../../../components/ui/SearchBar";
-import { Skeleton, SkeletonRolCard } from "../../../components/ui/Skeleton";
+import { SkeletonRolCard } from "../../../components/ui/Skeleton";
 import { TabBar } from "../../../components/ui/TabBar";
 import { useTheme } from "../../../theme/useTheme";
 import { Modulo } from "../modulos/types/modulo.types";
-import { Rol } from "../rol/types/rol.types";
-import { MatrizTodos, usePermisos } from "./usePermisos";
+import { RolConPermisos } from "../rol/types/rol.types";
+import { usePermisos } from "./usePermisos";
+import type { MatrizTodos } from "./types";
 
 const ACCIONES = [
   { id: 1, label: "Ver",    color: "#3B82F6" },
@@ -38,40 +38,19 @@ function initials(nombre: string): string {
   return nombre.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 }
 
-// ── Skeleton de tabla (mientras cargan los permisos del rol) ──────────────
-function TableSkeleton() {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <View style={{ padding: 14, gap: 10 }}>
-      {[1, 2, 3].map((i) => (
-        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-          <Skeleton width={140} height={12} borderRadius={6} />
-          {[1, 2, 3, 4].map((j) => (
-            <Skeleton key={j} width={28} height={28} borderRadius={8} />
-          ))}
-        </View>
-      ))}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-        <ActivityIndicator size="small" color={c.primary} />
-        <Text style={{ fontSize: 12, color: c.textMuted }}>Cargando permisos...</Text>
-      </View>
-    </View>
-  );
-}
+
 
 // ── Tarjeta de un rol ─────────────────────────────────────────────────────
 interface RolCardProps {
-  rol: Rol;
+  rol: RolConPermisos;
   index: number;
   modulo: Modulo;
   matriz: MatrizTodos;
-  cargandoPermisos: boolean;
   onToggle: (idRol: number, idFormulario: number, idAccion: number) => void;
 }
 
 function RolPermisosCard({
-  rol, index, modulo, matriz, cargandoPermisos, onToggle,
+  rol, index, modulo, matriz, onToggle,
 }: RolCardProps) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -95,21 +74,16 @@ function RolPermisosCard({
           <Text style={[styles.rolName, { color: c.text }]} numberOfLines={1}>
             {rol.rol}
           </Text>
-          {cargandoPermisos ? (
-            <Skeleton width={120} height={10} borderRadius={5} style={{ marginTop: 4 }} />
-          ) : (
+          
             <Text style={[styles.rolCounter, { color: c.textMuted }]}>
               {formsConPermisos}/{forms.length} formularios con permisos
             </Text>
-          )}
         </View>
         <Badge label={isActivo ? "Activo" : "Inactivo"} variant={isActivo ? "success" : "muted"} />
       </View>
 
       {/* Tabla o skeleton */}
-      {cargandoPermisos ? (
-        <TableSkeleton />
-      ) : (
+      
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ minWidth: 380 }}>
             {/* Cabecera columnas */}
@@ -163,7 +137,6 @@ function RolPermisosCard({
             )}
           </View>
         </ScrollView>
-      )}
     </View>
   );
 }
@@ -177,8 +150,7 @@ export function PermisosScreen() {
     rolesFiltrados,
     modulos,
     matriz,
-    loadingBase,
-    loadingRoles,
+    loading,
     saving,
     hayCambios,
     search,
@@ -214,7 +186,7 @@ export function PermisosScreen() {
   }
 
   // Carga inicial de la estructura (roles, módulos, formularios)
-  if (loadingBase) {
+  if (loading) {
     return (
       <View style={[styles.screen, { backgroundColor: c.background }]}>
         <View style={[styles.skeletonHeader, { backgroundColor: c.card, borderBottomColor: c.border }]} />
@@ -282,7 +254,6 @@ export function PermisosScreen() {
               index={i}
               modulo={moduloActivo}
               matriz={matriz}
-              cargandoPermisos={loadingRoles.has(rol.id)}
               onToggle={toggle}
             />
           ))

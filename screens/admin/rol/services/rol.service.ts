@@ -56,7 +56,27 @@ export const rolService = {
   syncPermisos: async (id: number, permisos: PermisoSync[]): Promise<void> => {
     await httpClient.putAuth(`/api/roles/${id}/permisos`, { permisos }, "Error al guardar permisos");
     const emp = empId();
-    configCache.invalidate(CK.rolPermisos(id), CK.sidebar(emp));
+    configCache.invalidate(
+      CK.rolPermisos(id),
+      CK.sidebar(emp),
+      CK.todosRolesPermisos(emp), // ← AGREGA ESTO
+    );
     await useModulesStore.getState().fetchModulos();
   },
+  
+  getAllConPermisos: async (): Promise<RolConPermisos[]> => {
+    const emp = empId();
+    const key = CK.todosRolesPermisos(emp);
+    const cached = configCache.get<RolConPermisos[]>(key);
+    if (cached) return cached;
+
+    const res = await httpClient.getAuth<{ data: RolConPermisos[] }>(
+      "/api/roles/permisos",
+      "Error al cargar permisos de roles",
+    );
+    const data = res.data ?? [];
+    configCache.set(key, data, TTL.permisos);
+    return data;
+  },
+  
 };

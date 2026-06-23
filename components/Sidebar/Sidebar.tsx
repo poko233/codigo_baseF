@@ -51,8 +51,9 @@ const FormularioItem: React.FC<{
   const c = theme.colors;
   const router = useRouter();
   const pathname = usePathname();
-  const isActive =
-    pathname === formulario.ruta || pathname.startsWith(formulario.ruta + "/");
+  const isActive = formulario.ruta
+    ? (pathname === formulario.ruta || pathname.startsWith(formulario.ruta + "/"))
+    : false;
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -64,8 +65,9 @@ const FormularioItem: React.FC<{
   ) as keyof typeof Ionicons.glyphMap;
 
   const handlePress = useCallback(() => {
-    onNavigate?.();
-    router.push(formulario.ruta as Href);
+      if (!formulario.ruta) return;  // ← No hacer nada si no hay ruta
+      onNavigate?.();
+      router.push(formulario.ruta as Href);
   }, [formulario.ruta, onNavigate]);
 
   return (
@@ -130,12 +132,12 @@ const ModuloItem: React.FC<{
 
   const hasChildren = modulo.formularios.length > 0;
   const anyChildActive = modulo.formularios.some(
-    (f) => pathname === f.ruta || pathname.startsWith(f.ruta + "/"),
+    (f) => f.ruta && (pathname === f.ruta || pathname.startsWith(f.ruta + "/")),
   );
-
   const [expanded, setExpanded] = useState(anyChildActive);
 
-  const href = `/${modulo.nombre.toLowerCase().replace(/\s+/g, "-")}`;
+  // const href = `/${modulo.nombre.toLowerCase().replace(/\s+/g, "-")}`;
+  const href = `/${(modulo.nombre ?? '').toLowerCase().replace(/\s+/g, "-")}`;
   const isActive =
     !hasChildren && (pathname === href || pathname.startsWith(href + "/"));
 
