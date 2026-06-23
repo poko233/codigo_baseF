@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 
+export type Estado = "Activo" | "Inactivo";
+
 export interface ColumnDef {
   key: string;
   header: string;
@@ -21,12 +23,17 @@ export interface AdminFormulario {
   formulario: string;
   ruta: string | null;
   descripcion: string | null;
+  estado: Estado;
+  id_empresa?: number;
+  modulos?: { id: number; modulo: string }[];
 }
 
 export interface CreateFormularioPayload {
   formulario: string;
-  ruta: string;
+  ruta?: string | null;
   descripcion?: string;
+  estado: Estado;
+  modulos?: number[];
 }
 
 export interface FormularioModuloAssignment {

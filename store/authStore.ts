@@ -176,7 +176,7 @@ export const useAuth = () => {
     useShallow((state) => ({
       user: state.user,
       loading: state.loading,
-      isAdmin: state.roles.includes("Administrador"),
+      isAdmin: state.roles.some((r) => r.toLowerCase() === "administrador"),
       empresaId: state.empresaId,
       empresaNombre: state.empresaNombre,
       sucursalId: state.sucursalId,

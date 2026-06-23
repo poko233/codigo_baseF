@@ -1,9 +1,13 @@
 
+export type Estado = "Activo" | "Inactivo";
+
 export interface Modulo {
   id: number;
   modulo: string;
   descripcion: string | null;
   icono: string | null;
+  estado: Estado;
+  id_empresa?: number;
   formularios?: Formulario[];
 }
 
@@ -12,13 +16,15 @@ export interface Formulario {
   formulario: string;
   descripcion: string | null;
   ruta: string | null;
+  estado?: Estado;
 }
-
 
 export interface CreateModuloPayload {
   modulo: string;
   descripcion?: string;
   icono?: string;
+  estado: Estado;
+  formularios?: number[];
 }
 
 export type UpdateModuloPayload = CreateModuloPayload;

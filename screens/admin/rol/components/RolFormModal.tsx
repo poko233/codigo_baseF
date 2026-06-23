@@ -4,14 +4,15 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { ThemedText } from "../../../../components/ThemedText";
 import { useTheme } from "../../../../theme/useTheme";
-import { Rol, RolPayload } from "../types/rol.types";
+import { Estado, Rol, RolPayload } from "../types/rol.types";
 
 type Props = {
   visible: boolean;
@@ -29,10 +30,12 @@ export default function RolFormModal({
   onSave,
 }: Props) {
   const { theme } = useTheme();
-  const colors: any = theme.colors;
+  const c = theme.colors;
 
   const [nombreRol, setNombreRol] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [estado, setEstado] = useState<Estado>("Activo");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!rol;
 
@@ -40,119 +43,149 @@ export default function RolFormModal({
     if (visible) {
       setNombreRol(rol?.rol ?? "");
       setDescripcion(rol?.descripcion ?? "");
+      setEstado(rol?.estado ?? "Activo");
+      setErrors({});
     }
   }, [visible, rol]);
 
-  const handleSave = async () => {
-    if (!nombreRol.trim()) {
-      Toast.show({
-        type: "error",
-        text1: "Campo requerido",
-        text2: "El nombre del rol es obligatorio",
-      });
-      return;
-    }
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!nombreRol.trim()) next.rol = "El nombre del rol es obligatorio";
+    if (nombreRol.trim().length > 40) next.rol = "Máximo 40 caracteres";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
+  const handleSave = async () => {
+    if (!validate()) return;
     const ok = await onSave({
       rol: nombreRol.trim(),
       descripcion: descripcion.trim() || null,
+      estado,
     });
-
     if (ok) onClose();
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View
-          style={[
-            styles.modal,
-            {
-              backgroundColor: colors.background || colors.secondary,
-            },
-          ]}
-        >
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={[styles.modal, { backgroundColor: c.card }]}>
+          <View style={[styles.header, { borderBottomColor: c.border }]}>
             <View>
-              <ThemedText style={[styles.title, { color: colors.text }]}>
+              <ThemedText style={[styles.title, { color: c.text }]}>
                 {isEditing ? "Editar Rol" : "Nuevo Rol"}
               </ThemedText>
-
-              <ThemedText style={[styles.subtitle, { color: colors.text }]}>
+              <ThemedText style={[styles.subtitle, { color: c.textSecondary }]}>
                 Completa los datos del rol.
               </ThemedText>
             </View>
-
             <Pressable
               onPress={onClose}
               disabled={saving}
-              style={[
-                styles.closeButton,
-                { backgroundColor: colors.secondary },
-              ]}
+              style={[styles.closeButton, { backgroundColor: c.backgroundSecondary }]}
             >
-              <Ionicons name="close" size={22} color={colors.text} />
+              <Ionicons name="close" size={22} color={c.text} />
             </Pressable>
           </View>
 
-          <View style={styles.body}>
-            <ThemedText style={[styles.label, { color: colors.text }]}>
-              Nombre del rol
-            </ThemedText>
+          <ScrollView
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: c.textSecondary }]}>
+                NOMBRE DEL ROL <ThemedText style={{ color: c.destructive }}>*</ThemedText>
+              </ThemedText>
+              <TextInput
+                value={nombreRol}
+                onChangeText={(t) => {
+                  setNombreRol(t);
+                  if (errors.rol) setErrors((e) => ({ ...e, rol: "" }));
+                }}
+                placeholder="Ej: Administrador"
+                placeholderTextColor={c.textMuted}
+                maxLength={40}
+                style={[
+                  styles.input,
+                  {
+                    color: c.text,
+                    borderColor: errors.rol ? c.destructive : c.inputBorder,
+                    backgroundColor: c.input,
+                  },
+                ]}
+              />
+              {errors.rol ? (
+                <ThemedText style={[styles.errorText, { color: c.destructive }]}>
+                  {errors.rol}
+                </ThemedText>
+              ) : null}
+            </View>
 
-            <TextInput
-              value={nombreRol}
-              onChangeText={setNombreRol}
-              placeholder="Ej: Administrador"
-              placeholderTextColor={`${colors.text}99`}
-              style={[
-                styles.input,
-                {
-                  color: colors.text,
-                  borderColor: colors.border,
-                  backgroundColor: colors.secondary,
-                },
-              ]}
-            />
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: c.textSecondary }]}>
+                DESCRIPCIÓN
+              </ThemedText>
+              <TextInput
+                value={descripcion}
+                onChangeText={setDescripcion}
+                placeholder="Ej: Acceso completo al sistema"
+                placeholderTextColor={c.textMuted}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  {
+                    color: c.text,
+                    borderColor: c.inputBorder,
+                    backgroundColor: c.input,
+                  },
+                ]}
+              />
+            </View>
 
-            <ThemedText style={[styles.label, { color: colors.text }]}>
-              Descripción
-            </ThemedText>
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: c.textSecondary }]}>
+                ESTADO
+              </ThemedText>
+              <View
+                style={[
+                  styles.switchRow,
+                  { backgroundColor: c.backgroundSecondary, borderColor: c.border },
+                ]}
+              >
+                <View style={styles.switchInfo}>
+                  <ThemedText style={[styles.switchLabel, { color: c.text }]}>
+                    {estado === "Activo" ? "Activo" : "Inactivo"}
+                  </ThemedText>
+                  <ThemedText style={[styles.switchSub, { color: c.textMuted }]}>
+                    {estado === "Activo"
+                      ? "El rol está habilitado"
+                      : "El rol está deshabilitado"}
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={estado === "Activo"}
+                  onValueChange={(v) => setEstado(v ? "Activo" : "Inactivo")}
+                  trackColor={{ false: c.border, true: c.success }}
+                  thumbColor={c.primaryForeground}
+                />
+              </View>
+            </View>
+          </ScrollView>
 
-            <TextInput
-              value={descripcion}
-              onChangeText={setDescripcion}
-              placeholder="Ej: Acceso completo al sistema"
-              placeholderTextColor={`${colors.text}99`}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              style={[
-                styles.input,
-                styles.textArea,
-                {
-                  color: colors.text,
-                  borderColor: colors.border,
-                  backgroundColor: colors.secondary,
-                },
-              ]}
-            />
-          </View>
-
-          <View style={[styles.footer, { borderTopColor: colors.border }]}>
+          <View style={[styles.footer, { borderTopColor: c.border }]}>
             <Pressable
               onPress={onClose}
               disabled={saving}
               style={[
                 styles.cancelButton,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.background || colors.secondary,
-                },
+                { borderColor: c.border },
                 saving && styles.disabled,
               ]}
             >
-              <ThemedText style={[styles.cancelText, { color: colors.text }]}>
+              <ThemedText style={[styles.cancelText, { color: c.textSecondary }]}>
                 Cancelar
               </ThemedText>
             </Pressable>
@@ -162,20 +195,14 @@ export default function RolFormModal({
               disabled={saving}
               style={[
                 styles.saveButton,
-                { backgroundColor: colors.primary },
+                { backgroundColor: c.primary },
                 saving && styles.disabled,
               ]}
             >
               {saving && (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primaryForeground}
-                />
+                <ActivityIndicator size="small" color={c.primaryForeground} />
               )}
-
-              <ThemedText
-                style={[styles.saveText, { color: colors.primaryForeground }]}
-              >
+              <ThemedText style={[styles.saveText, { color: c.primaryForeground }]}>
                 {isEditing ? "Guardar cambios" : "Crear rol"}
               </ThemedText>
             </Pressable>
@@ -199,6 +226,7 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     borderRadius: 24,
     overflow: "hidden",
+    maxHeight: "90%",
   },
   header: {
     paddingHorizontal: 24,
@@ -228,11 +256,15 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 24,
     paddingVertical: 20,
+    gap: 20,
+  },
+  field: {
+    gap: 8,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.4,
   },
   input: {
     borderWidth: 1,
@@ -240,11 +272,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    marginBottom: 16,
-    outlineStyle: "none" as any,
   },
   textArea: {
-    minHeight: 110,
+    minHeight: 100,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  switchInfo: {
+    flex: 1,
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  switchSub: {
+    fontSize: 12,
+    marginTop: 2,
   },
   footer: {
     paddingHorizontal: 24,

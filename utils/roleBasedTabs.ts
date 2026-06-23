@@ -5,7 +5,7 @@ export interface TabDefinition {
   icon: string; // nombre de MaterialCommunityIcons
 }
 const roleTabMap: Record<string, TabDefinition[]> = {
-  Administrador: [
+  administrador: [
     { name: "perfil", title: "Perfil", icon: "person-outline" },
     { name: "marcado", title: "Marcado", icon: "create-outline" },
   ],
@@ -21,7 +21,7 @@ export function getTabsForRoles(roles: string[]): TabDefinition[] {
   const tabsMap = new Map<string, TabDefinition>();
 
   for (const role of roles) {
-    const tabsForRole = roleTabMap[role];
+    const tabsForRole = roleTabMap[role.toLowerCase()];
     if (tabsForRole) {
       for (const tab of tabsForRole) {
         if (!tabsMap.has(tab.name)) {

@@ -19,9 +19,25 @@ export interface MiModulo {
   formularios: MiFormulario[];
 }
 
-interface MisModulosResponse {
-  success: boolean;
-  modulos: MiModulo[];
+// Forma exacta que devuelve GET /api/sidebar
+interface SidebarFormulario {
+  id: number;
+  formulario: string;
+  ruta: string;
+  icono?: string | null;
+  descripcion?: string;
+}
+
+interface SidebarModulo {
+  id: number;
+  modulo: string;
+  icono?: string;
+  descripcion?: string;
+  formularios: SidebarFormulario[];
+}
+
+interface SidebarResponse {
+  data: SidebarModulo[];
 }
 
 interface ModulesState {
@@ -33,6 +49,22 @@ interface ModulesState {
   clearModulos: () => void;
 }
 
+function mapSidebarToStore(raw: SidebarModulo[]): MiModulo[] {
+  return raw.map((m) => ({
+    id: m.id,
+    nombre: m.modulo,
+    descripcion: m.descripcion ?? "",
+    icono: m.icono ?? "apps",
+    formularios: (m.formularios ?? []).map((f) => ({
+      id: f.id,
+      nombre: f.formulario,
+      ruta: f.ruta,
+      icono: f.icono ?? null,
+      descripcion: f.descripcion ?? "",
+    })),
+  }));
+}
+
 export const useModulesStore = create<ModulesState>((set, get) => ({
   modulos: [],
   loading: false,
@@ -40,23 +72,21 @@ export const useModulesStore = create<ModulesState>((set, get) => ({
   allowedRoutes: new Set(),
 
   fetchModulos: async () => {
-    // Evitar múltiples peticiones simultáneas sin bloquear la primera
     if ((get() as any)._fetching) return;
     (get() as any)._fetching = true;
     set({ loading: true, error: null });
     try {
-      const data = await httpClient.getAuth<MisModulosResponse>(
-        "/api/mis-modulos",
-        "Error al cargar módulos",
+      const data = await httpClient.getAuth<SidebarResponse>(
+        "/api/sidebar",
+        "Error al cargar el menú lateral",
       );
-      const modulos = data.modulos ?? [];
+      const modulos = mapSidebarToStore(data.data ?? []);
       const routes = new Set<string>();
       for (const modulo of modulos) {
         if (modulo.formularios.length > 0) {
           modulo.formularios.forEach((f) => {
-            const cleanRoute =
-              f.ruta.replace(/\\\//g, "/").replace(/\/+$/, "") || "/";
-            routes.add(cleanRoute);
+            const clean = f.ruta.replace(/\\/g, "/").replace(/\/+$/, "") || "/";
+            routes.add(clean);
           });
         } else {
           const slug = `/${modulo.nombre.toLowerCase().replace(/\s+/g, "-")}`;
@@ -66,7 +96,7 @@ export const useModulesStore = create<ModulesState>((set, get) => ({
       set({ modulos, allowedRoutes: routes, loading: false });
     } catch (err: any) {
       set({
-        error: err?.message ?? "Error al cargar módulos",
+        error: err?.message ?? "Error al cargar el menú lateral",
         modulos: [],
         allowedRoutes: new Set(),
         loading: false,
@@ -77,12 +107,7 @@ export const useModulesStore = create<ModulesState>((set, get) => ({
   },
 
   clearModulos: () => {
-    set({
-      modulos: [],
-      allowedRoutes: new Set(),
-      error: null,
-      loading: false,
-    });
+    set({ modulos: [], allowedRoutes: new Set(), error: null, loading: false });
   },
 }));
 

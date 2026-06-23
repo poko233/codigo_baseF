@@ -17,10 +17,14 @@ import RolTable from "./components/RolTable";
 import RolThemeToggle from "./components/RolThemeToggle";
 import { useRoles } from "./hooks/useRoles";
 import { Rol, RolPayload } from "./types/rol.types";
-export default function RolScreen() {
+
+type Props = {
+  onPermisos: (rol: Rol) => void;
+};
+
+export default function RolScreen({ onPermisos }: Props) {
   const { theme } = useTheme();
   const colors: any = theme.colors;
-
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
 
@@ -50,22 +54,17 @@ export default function RolScreen() {
   };
 
   const handleSave = async (payload: RolPayload) => {
-    if (selectedRol) {
-      return await updateRol(selectedRol.id, payload);
-    }
-
+    if (selectedRol) return await updateRol(selectedRol.id, payload);
     return await createRol(payload);
   };
 
   const handleDelete = (rol: Rol) => {
     const eliminar = () => deleteRol(rol.id);
-
     if (Platform.OS === "web") {
       const ok = globalThis.confirm?.(`¿Eliminar el rol "${rol.rol}"?`);
       if (ok) eliminar();
       return;
     }
-
     Alert.alert(
       "Eliminar rol",
       `¿Seguro que quieres eliminar el rol "${rol.rol}"?`,
@@ -78,10 +77,7 @@ export default function RolScreen() {
 
   return (
     <View
-      style={[
-        styles.screen,
-        { backgroundColor: colors.background || colors.secondary },
-      ]}
+      style={[styles.screen, { backgroundColor: colors.background }]}
     >
       <ScrollView
         style={styles.scroll}
@@ -95,10 +91,7 @@ export default function RolScreen() {
         <View
           style={[
             styles.card,
-            {
-              backgroundColor: colors.background || colors.secondary,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
           <View
@@ -108,28 +101,20 @@ export default function RolScreen() {
               <ThemedText style={[styles.cardTitle, { color: colors.primary }]}>
                 Listado Roles
               </ThemedText>
-
               <View
-                style={[
-                  styles.cardUnderline,
-                  { backgroundColor: colors.primary },
-                ]}
+                style={[styles.cardUnderline, { backgroundColor: colors.primary }]}
               />
             </View>
 
             <View style={styles.headerRight}>
               <RolThemeToggle />
-
               <View style={styles.counter}>
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={20}
                   color={colors.primary}
                 />
-
-                <ThemedText
-                  style={[styles.counterText, { color: colors.text }]}
-                >
+                <ThemedText style={[styles.counterText, { color: colors.text }]}>
                   {filteredRoles.length} roles
                 </ThemedText>
               </View>
@@ -144,6 +129,7 @@ export default function RolScreen() {
             deletingId={deletingId}
             onEdit={openEdit}
             onDelete={handleDelete}
+            onPermisos={onPermisos}
             isMobile={isMobile}
           />
 
@@ -167,20 +153,10 @@ export default function RolScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: 32,
-    paddingBottom: 60,
-  },
-  contentMobile: {
-    padding: 14,
-    paddingBottom: 40,
-  },
+  screen: { flex: 1 },
+  scroll: { flex: 1 },
+  content: { padding: 32, paddingBottom: 60 },
+  contentMobile: { padding: 14, paddingBottom: 40 },
   card: {
     borderWidth: 1,
     borderRadius: 18,

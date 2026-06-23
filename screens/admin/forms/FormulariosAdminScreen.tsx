@@ -2,97 +2,136 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { useTheme } from "../../../theme/useTheme";
-import { AdminFormulario } from "../types/admin.types";
+import { AdminFormulario, CreateFormularioPayload } from "../types/admin.types";
+import { FormularioFormModal } from "./FormularioFormModal";
 import { useFormularios } from "./useFormularios";
-
 
 export function FormulariosAdminScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
- const { formularios, loading, saving, createFormulario, deleteFormulario, updateFormulario } = useFormularios();
 
+  const {
+    formularios,
+    loading,
+    saving,
+    createFormulario,
+    deleteFormulario,
+    updateFormulario,
+  } = useFormularios();
+
+  const [search, setSearch] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [formulario, setFormulario] = useState("");
-  const [ruta, setRuta] = useState("");
-  const [descripcion, setDescripcion] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [confirmId, setConfirmId] = useState<number | null>(null);
-  const validate = () => {
-    const next: Record<string, string> = {};
-    if (!formulario.trim()) next.formulario = "El nombre del formulario es obligatorio";
-    if (!ruta.trim()) next.ruta = "La ruta es obligatoria";
-    if (ruta.trim() && !ruta.trim().startsWith("/")) next.ruta = "La ruta debe iniciar con /";
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
   const [editingItem, setEditingItem] = useState<AdminFormulario | null>(null);
-  const openEdit = (item: AdminFormulario) => {
-    setEditingItem(item);
-    setFormulario(item.formulario);
-    setRuta(item.ruta ?? "");
-    setDescripcion(item.descripcion ?? "");
-    setErrors({});
-    setModalVisible(true);
-  };
+
+  const filtered = formularios.filter(
+    (f) =>
+      f.formulario.toLowerCase().includes(search.toLowerCase()) ||
+      (f.ruta ?? "").toLowerCase().includes(search.toLowerCase()),
+  );
 
   const openCreate = () => {
     setEditingItem(null);
-    setFormulario("");
-    setRuta("");
-    setDescripcion("");
-    setErrors({});
     setModalVisible(true);
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
+  const openEdit = (item: AdminFormulario) => {
+    setEditingItem(item);
+    setModalVisible(true);
+  };
+
+  const handleSave = async (payload: CreateFormularioPayload): Promise<boolean> => {
     try {
       if (editingItem) {
-        await updateFormulario(editingItem.id, {
-          formulario: formulario.trim(),
-          ruta: ruta.trim(),
-          descripcion: descripcion.trim() || undefined,
-        });
-        Toast.show({ type: "success", text1: "Formulario actualizado" });
-      } else {
-        const created = await createFormulario({
-          formulario: formulario.trim(),
-          ruta: ruta.trim(),
-          descripcion: descripcion.trim() || undefined,
-        });
-        Toast.show({ type: "success", text1: "Formulario creado", text2: `ID ${created.id}` });
+        return await updateFormulario(editingItem.id, payload);
       }
-      setEditingItem(null);
-      setModalVisible(false);
-    } catch {}
+      await createFormulario(payload);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleDelete = (item: AdminFormulario) => {
+    const doDelete = () => deleteFormulario(item.id);
+    if (Platform.OS === "web") {
+      if (globalThis.confirm?.(`¿Eliminar "${item.formulario}"?`)) doDelete();
+      return;
+    }
+    Alert.alert(
+      "Eliminar formulario",
+      `¿Seguro que quieres eliminar "${item.formulario}"?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Eliminar", style: "destructive", onPress: doDelete },
+      ],
+    );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: c.background }]}> 
-      <View style={[styles.topBar, { backgroundColor: c.card, borderBottomColor: c.border }]}> 
+    <View style={[styles.container, { backgroundColor: c.background }]}>
+      {/* Header */}
+      <View
+        style={[
+          styles.topBar,
+          { backgroundColor: c.card, borderBottomColor: c.border },
+        ]}
+      >
         <View>
           <Text style={[styles.title, { color: c.text }]}>Formularios</Text>
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>
             {formularios.length} formulario{formularios.length === 1 ? "" : "s"} registrados
           </Text>
         </View>
-
-        <TouchableOpacity onPress={openCreate} style={[styles.addButton, { backgroundColor: c.primary }]}> 
+        <TouchableOpacity
+          onPress={openCreate}
+          style={[styles.addButton, { backgroundColor: c.primary }]}
+          accessibilityLabel="Nuevo formulario"
+          accessibilityRole="button"
+        >
           <Ionicons name="add" size={18} color={c.primaryForeground} />
-          <Text style={[styles.addButtonText, { color: c.primaryForeground }]}>Nuevo</Text>
+          <Text style={[styles.addButtonText, { color: c.primaryForeground }]}>
+            Nuevo
+          </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Buscador */}
+      <View
+        style={[
+          styles.searchWrap,
+          { backgroundColor: c.backgroundSecondary },
+        ]}
+      >
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: c.input, borderColor: c.inputBorder },
+          ]}
+        >
+          <Ionicons name="search-outline" size={16} color={c.textMuted} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar formulario o ruta..."
+            placeholderTextColor={c.textMuted}
+            style={[styles.searchInput, { color: c.text }]}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={16} color={c.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {loading ? (
@@ -101,143 +140,130 @@ export function FormulariosAdminScreen() {
         </View>
       ) : (
         <FlatList
-          data={formularios}
+          data={filtered}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <View style={[styles.tableHeader, { borderColor: c.border, backgroundColor: c.backgroundSecondary }]}> 
-              <Text style={[styles.colId, { color: c.textSecondary }]}>ID</Text>
-              <Text style={[styles.colForm, { color: c.textSecondary }]}>Formulario</Text>
-              <Text style={[styles.colRoute, { color: c.textSecondary }]}>Ruta</Text>
-              <Text style={[styles.colDesc, { color: c.textSecondary }]}>Descripción</Text>
-              <Text style={{ width: 70, color: c.textSecondary, fontWeight: "700" }}>Acciones</Text>
-            </View>
-          }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Ionicons name="document-text-outline" size={42} color={c.muted} />
-              <Text style={{ color: c.textSecondary, marginTop: 10 }}>No hay formularios disponibles.</Text>
+              <Ionicons
+                name="document-text-outline"
+                size={42}
+                color={c.textMuted}
+              />
+              <Text style={[styles.emptyText, { color: c.textSecondary }]}>
+                {search ? "Sin resultados" : "No hay formularios aún"}
+              </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View style={[styles.row, { backgroundColor: c.card, borderColor: c.border }]}> 
-              <Text style={[styles.colId, { color: c.text }]}>{item.id}</Text>
-              <Text style={[styles.colForm, { color: c.text }]} numberOfLines={1}>{item.formulario}</Text>
-              <Text style={[styles.colRoute, { color: c.textSecondary }]} numberOfLines={1}>{item.ruta}</Text>
-              <Text style={[styles.colDesc, { color: c.textSecondary }]} numberOfLines={2}>{item.descripcion ?? "—"}</Text>
-              <View style={{ flexDirection: "row", gap: 6 }}>
-                <TouchableOpacity onPress={() => openEdit(item)} style={[styles.actionBtn, { borderColor: c.border }]} hitSlop={8}
-                >
-                  <Ionicons name="pencil-outline" size={15} color={c.text} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setConfirmId(item.id)}
-                  style={[styles.actionBtn, { borderColor: "#F43F5E" }]}
-                  hitSlop={8}
-                >
-                  <Ionicons name="trash-outline" size={15} color="#F43F5E" />
-                </TouchableOpacity>
+          renderItem={({ item }) => {
+            const isActivo = item.estado === "Activo";
+            return (
+              <View
+                style={[
+                  styles.row,
+                  { backgroundColor: c.card, borderColor: c.border },
+                ]}
+              >
+                <View style={styles.rowMain}>
+                  <View style={styles.rowTop}>
+                    <Text
+                      style={[styles.rowName, { color: c.text }]}
+                      numberOfLines={1}
+                    >
+                      {item.formulario}
+                    </Text>
+                    <View
+                      style={[
+                        styles.badge,
+                        {
+                          backgroundColor: isActivo
+                            ? `${c.success}22`
+                            : `${c.textMuted}22`,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          { color: isActivo ? c.success : c.textMuted },
+                        ]}
+                      >
+                        {item.estado ?? "Activo"}
+                      </Text>
+                    </View>
+                  </View>
+                  {item.ruta ? (
+                    <Text
+                      style={[styles.rowRoute, { color: c.textMuted }]}
+                      numberOfLines={1}
+                    >
+                      {item.ruta}
+                    </Text>
+                  ) : null}
+                  {item.descripcion ? (
+                    <Text
+                      style={[styles.rowDesc, { color: c.textSecondary }]}
+                      numberOfLines={2}
+                    >
+                      {item.descripcion}
+                    </Text>
+                  ) : null}
+                  {(item.modulos?.length ?? 0) > 0 && (
+                    <View style={styles.modulesRow}>
+                      {item.modulos!.slice(0, 3).map((m) => (
+                        <View
+                          key={m.id}
+                          style={[
+                            styles.moduleChip,
+                            { backgroundColor: `${c.primary}18`, borderColor: c.primary },
+                          ]}
+                        >
+                          <Text style={[styles.moduleChipText, { color: c.primary }]}>
+                            {m.modulo}
+                          </Text>
+                        </View>
+                      ))}
+                      {item.modulos!.length > 3 && (
+                        <Text style={[styles.moduleChipText, { color: c.textMuted }]}>
+                          +{item.modulos!.length - 3}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.rowActions}>
+                  <TouchableOpacity
+                    onPress={() => openEdit(item)}
+                    style={[styles.actionBtn, { borderColor: c.border }]}
+                    accessibilityLabel={`Editar ${item.formulario}`}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="pencil-outline" size={15} color={c.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(item)}
+                    style={[styles.actionBtn, { borderColor: c.destructive }]}
+                    accessibilityLabel={`Eliminar ${item.formulario}`}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="trash-outline" size={15} color={c.destructive} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
 
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setModalVisible(false)} />
-
-        <View style={styles.modalWrap} pointerEvents="box-none">
-          <View style={[styles.modalCard, { backgroundColor: c.card }]}> 
-            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}> 
-              <View>
-               <Text style={[styles.modalTitle, { color: c.text }]}>
-                {editingItem ? "Editar formulario" : "Nuevo formulario"}
-              </Text>
-                <Text style={[styles.modalSub, { color: c.textSecondary }]}>Registra el formulario y copia el ID de respuesta</Text>
-              </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={22} color={c.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: c.textSecondary }]}>Formulario</Text>
-                <TextInput
-                  value={formulario}
-                  onChangeText={setFormulario}
-                  placeholder="Usuarios"
-                  placeholderTextColor={c.muted}
-                  style={[styles.input, { borderColor: errors.formulario ? "#F43F5E" : c.border, color: c.text, backgroundColor: c.input }]}
-                />
-                {errors.formulario ? <Text style={styles.error}>{errors.formulario}</Text> : null}
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: c.textSecondary }]}>Ruta</Text>
-                <TextInput
-                  value={ruta}
-                  onChangeText={setRuta}
-                  placeholder="/admin/usuarios"
-                  placeholderTextColor={c.muted}
-                  style={[styles.input, { borderColor: errors.ruta ? "#F43F5E" : c.border, color: c.text, backgroundColor: c.input }]}
-                />
-                {errors.ruta ? <Text style={styles.error}>{errors.ruta}</Text> : null}
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: c.textSecondary }]}>Descripción</Text>
-                <TextInput
-                  value={descripcion}
-                  onChangeText={setDescripcion}
-                  placeholder="Gestión de usuarios"
-                  placeholderTextColor={c.muted}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  style={[styles.textarea, { borderColor: c.border, color: c.text, backgroundColor: c.input }]}
-                />
-              </View>
-            </ScrollView>
-
-            <View style={[styles.modalFooter, { borderTopColor: c.border }]}> 
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.secondaryButton, { borderColor: c.border }]}> 
-                <Text style={{ color: c.textSecondary }}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleSubmit} disabled={saving} style={[styles.primaryButton, { backgroundColor: saving ? c.muted : c.primary }]}> 
-                <Text style={{ color: c.primaryForeground, fontWeight: "700" }}>{saving ? "Guardando..." : "Crear formulario"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={confirmId !== null} transparent animationType="fade">
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setConfirmId(null)} />
-      <View style={styles.modalWrap} pointerEvents="box-none">
-        <View style={[styles.modalCard, { backgroundColor: c.card, padding: 24, alignItems: "center", gap: 14 }]}>
-          <Ionicons name="trash-outline" size={32} color={c.destructive} />
-          <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>¿Eliminar formulario?</Text>
-          <Text style={{ color: c.textSecondary, textAlign: "center" }}>Esta acción no se puede deshacer.</Text>
-          <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
-            <TouchableOpacity
-              onPress={() => setConfirmId(null)}
-              style={[styles.secondaryButton, { borderColor: c.border }]}
-            >
-              <Text style={{ color: c.textSecondary }}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => { deleteFormulario(confirmId!); setConfirmId(null); }}
-              style={[styles.primaryButton, { backgroundColor: c.destructive }]}
-            >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>Eliminar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
+      <FormularioFormModal
+        visible={modalVisible}
+        formulario={editingItem}
+        saving={saving}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSave}
+      />
     </View>
-    
   );
 }
 
@@ -262,111 +288,57 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   addButtonText: { fontWeight: "700" },
-  list: {
-    padding: 16,
-    gap: 10,
-    paddingBottom: 28,
-  },
-  tableHeader: {
+  searchWrap: { paddingHorizontal: 16, paddingVertical: 10 },
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
+    gap: 8,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  colId: { width: 48, fontWeight: "700" },
-  colForm: { flex: 1, fontWeight: "700" },
-  colRoute: { flex: 1.1 },
-  colDesc: { flex: 1.4 },
+  searchInput: { flex: 1, fontSize: 14, padding: 0 },
+  list: { padding: 16, gap: 10, paddingBottom: 40 },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 30,
+    padding: 40,
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  modalWrap: {
-    flex: 1,
-    justifyContent: "center",  
-    alignItems: "center",       
-    paddingHorizontal: 24, 
-  },
-  modalCard: {
-    borderRadius: 20,         
-    width: "100%",              
-    maxWidth: 520,          
-    maxHeight: "88%",
-    
-  },
-  modalHeader: {
+  emptyText: { fontSize: 14, marginTop: 12 },
+  row: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    borderBottomWidth: 1,
-    padding: 20,
-  },
-  modalTitle: { fontSize: 16, fontWeight: "800" },
-  modalSub: { fontSize: 12, marginTop: 4 },
-  modalBody: {
-    padding: 20,
-    gap: 16,
-  },
-  field: { gap: 8 },
-  label: { fontSize: 11, fontWeight: "700", letterSpacing: 0.4 },
-  input: {
+    gap: 12,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    borderRadius: 12,
+    padding: 14,
   },
-  textarea: {
+  rowMain: { flex: 1, gap: 4 },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rowName: { flex: 1, fontSize: 14, fontWeight: "700" },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  rowRoute: { fontSize: 12, fontFamily: "monospace" },
+  rowDesc: { fontSize: 13, lineHeight: 18 },
+  modulesRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
+  moduleChip: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    minHeight: 96,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  error: { color: "#F43F5E", fontSize: 12 },
-  modalFooter: {
-    flexDirection: "row",
-    gap: 10,
-    padding: 20,
-    borderTopWidth: 1,
-  },
-  secondaryButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    paddingVertical: 12,
-  },
+  moduleChipText: { fontSize: 10, fontWeight: "600" },
+  rowActions: { flexDirection: "row", gap: 6, flexShrink: 0 },
   actionBtn: {
-    width: 30,
-    height: 30,
-    borderWidth: 0.5,
+    width: 32,
+    height: 32,
+    borderWidth: 1,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",

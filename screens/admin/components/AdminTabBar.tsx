@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../../../theme/useTheme";
 
 export type AdminTabKey =
+  | "permisos"
   | "roles"
   | "modulos"
   | "formularios"

@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Toast from "react-native-toast-message";
-import { httpClient } from "../../../../http/httpClient";
+import { rolService } from "../services/rol.service";
 import { Rol, RolPayload } from "../types/rol.types";
-
-type ApiResponse = {
-  success: boolean;
-  roles?: Rol[];
-  rol?: Rol;
-  message?: string;
-};
 
 export function useRoles() {
   const [roles, setRoles] = useState<Rol[]>([]);
@@ -20,20 +13,13 @@ export function useRoles() {
   const fetchRoles = useCallback(async () => {
     try {
       setLoading(true);
-
-      const response = await httpClient.getAuth<ApiResponse>(
-        "/api/roles",
-        "Error al cargar roles",
-      );
-
-      setRoles(response.roles ?? []);
-    } catch (error) {
-      console.error("Error cargando roles:", error);
-
+      const data = await rolService.getAll();
+      setRoles(data);
+    } catch (error: any) {
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: "No se pudieron cargar los roles",
+        text2: error?.message || "No se pudieron cargar los roles",
       });
     } finally {
       setLoading(false);
@@ -43,30 +29,20 @@ export function useRoles() {
   const createRol = async (payload: RolPayload) => {
     try {
       setSaving(true);
-
-      await httpClient.postAuth<ApiResponse>(
-        "/api/roles",
-        payload,
-        "Error al crear rol",
-      );
-
+      await rolService.create(payload);
       Toast.show({
         type: "success",
         text1: "Rol creado",
         text2: "El rol se registró correctamente",
       });
-
       await fetchRoles();
       return true;
     } catch (error: any) {
-      console.error("Error creando rol:", error);
-
       Toast.show({
         type: "error",
         text1: "Error",
         text2: error?.message || "No se pudo crear el rol",
       });
-
       return false;
     } finally {
       setSaving(false);
@@ -76,30 +52,20 @@ export function useRoles() {
   const updateRol = async (id: number, payload: RolPayload) => {
     try {
       setSaving(true);
-
-      await httpClient.putAuth<ApiResponse>(
-        `/api/roles/${id}`,
-        payload,
-        "Error al actualizar rol",
-      );
-
+      await rolService.update(id, payload);
       Toast.show({
         type: "success",
         text1: "Rol actualizado",
         text2: "Los cambios se guardaron correctamente",
       });
-
       await fetchRoles();
       return true;
     } catch (error: any) {
-      console.error("Error actualizando rol:", error);
-
       Toast.show({
         type: "error",
         text1: "Error",
         text2: error?.message || "No se pudo actualizar el rol",
       });
-
       return false;
     } finally {
       setSaving(false);
@@ -109,22 +75,14 @@ export function useRoles() {
   const deleteRol = async (id: number) => {
     try {
       setDeletingId(id);
-
-      await httpClient.deleteAuth<ApiResponse>(
-        `/api/roles/${id}`,
-        "Error al eliminar rol",
-      );
-
+      await rolService.delete(id);
       Toast.show({
         type: "success",
         text1: "Rol eliminado",
         text2: "El rol fue eliminado correctamente",
       });
-
       await fetchRoles();
     } catch (error: any) {
-      console.error("Error eliminando rol:", error);
-
       Toast.show({
         type: "error",
         text1: "Error",
@@ -137,15 +95,12 @@ export function useRoles() {
 
   const filteredRoles = useMemo(() => {
     const q = search.trim().toLowerCase();
-
     if (!q) return roles;
-
-    return roles.filter((item) => {
-      return (
+    return roles.filter(
+      (item) =>
         item.rol?.toLowerCase().includes(q) ||
-        item.descripcion?.toLowerCase().includes(q)
-      );
-    });
+        item.descripcion?.toLowerCase().includes(q),
+    );
   }, [roles, search]);
 
   useEffect(() => {

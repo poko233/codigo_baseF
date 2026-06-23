@@ -1,4 +1,7 @@
 import { httpClient } from "@http";
+import { CK, TTL, configCache } from "../../../cache/configCache";
+import { useAuthStore } from "../../../store/authStore";
+import { useModulesStore } from "../../../store/modulesStore";
 import {
   AdminFormulario,
   CreateFormularioModuloPayload,
@@ -11,14 +14,26 @@ import {
 interface ApiList<T>  { success: boolean; data: T[] }
 interface ApiItem<T>  { success: boolean; message?: string; data: T }
 
+function empId() {
+  return useAuthStore.getState().empresaId ?? 0;
+}
+
+async function invalidateFormulariosAndRefresh() {
+  const emp = empId();
+  configCache.invalidate(CK.formularios(emp), CK.modulos(emp), CK.sidebar(emp));
+  await useModulesStore.getState().fetchModulos();
+}
+
 export const adminService = {
-
-
   getFormularios: async (): Promise<AdminFormulario[]> => {
+    const key = CK.formularios(empId());
+    const cached = configCache.get<AdminFormulario[]>(key);
+    if (cached) return cached;
     const res = await httpClient.getAuth<ApiList<AdminFormulario>>(
       "/api/formularios",
       "No se pudieron cargar los formularios",
     );
+    configCache.set(key, res.data, TTL.lista);
     return res.data;
   },
 
@@ -28,14 +43,8 @@ export const adminService = {
       payload,
       "No se pudo crear el formulario",
     );
+    await invalidateFormulariosAndRefresh();
     return res.data;
-  },
-
-  deleteFormulario: async (id: number): Promise<void> => {
-    await httpClient.deleteAuth<unknown>(
-      `/api/formularios/${id}`,
-      "No se pudo eliminar el formulario",
-    );
   },
 
   updateFormulario: async (id: number, payload: CreateFormularioPayload): Promise<AdminFormulario> => {
@@ -44,9 +53,17 @@ export const adminService = {
       payload,
       "No se pudo actualizar el formulario",
     );
+    await invalidateFormulariosAndRefresh();
     return res.data;
   },
 
+  deleteFormulario: async (id: number): Promise<void> => {
+    await httpClient.deleteAuth<unknown>(
+      `/api/formularios/${id}`,
+      "No se pudo eliminar el formulario",
+    );
+    await invalidateFormulariosAndRefresh();
+  },
 
   getFormularioModulos: async (): Promise<FormularioModuloAssignment[]> => {
     const res = await httpClient.getAuth<ApiList<FormularioModuloAssignment>>(
@@ -64,6 +81,8 @@ export const adminService = {
       payload,
       "No se pudo asignar el formulario al módulo",
     );
+    configCache.invalidate(CK.modulos(empId()), CK.sidebar(empId()));
+    await useModulesStore.getState().fetchModulos();
     return res.data;
   },
 
@@ -72,8 +91,9 @@ export const adminService = {
       `/api/formulario-modulo/${id}`,
       "No se pudo eliminar la asignación",
     );
+    configCache.invalidate(CK.modulos(empId()), CK.sidebar(empId()));
+    await useModulesStore.getState().fetchModulos();
   },
-
 
   getModuloRoles: async (): Promise<ModuloRolAssignment[]> => {
     const res = await httpClient.getAuth<ApiList<ModuloRolAssignment>>(

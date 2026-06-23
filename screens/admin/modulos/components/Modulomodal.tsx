@@ -1,35 +1,39 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "@theme"; // ajusta la ruta a tu contexto
+import { useTheme } from "@theme";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator, FlatList, KeyboardAvoidingView,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+import { adminService } from "../../services/admin.service";
+import { AdminFormulario } from "../../types/admin.types";
 import {
   AVAILABLE_ICONS,
   CreateModuloPayload,
+  Estado,
   getIconsByCategory,
   ICON_CATEGORIES,
   IconCategory,
   Modulo,
 } from "../types/modulo.types";
 
-
 interface ModuloModalProps {
   visible: boolean;
-  modulo?: Modulo | null;  
-  modulos: Modulo[];        
+  modulo?: Modulo | null;
+  modulos: Modulo[];
   onClose: () => void;
   onSubmit: (payload: CreateModuloPayload) => Promise<boolean>;
 }
-
 
 export function ModuloModal({
   visible,
@@ -42,19 +46,47 @@ export function ModuloModal({
 
   const isEdit = !!modulo;
 
-  const [titulo, setTitulo]           = useState("");
+  const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [iconoKey, setIconoKey]       = useState<string>("home");
-  const [loading, setLoading]         = useState(false);
-  const [errors, setErrors]           = useState<Record<string, string>>({});
+  const [iconoKey, setIconoKey] = useState<string>("home");
+  const [estado, setEstado] = useState<Estado>("Activo");
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Multi-select de formularios
+  const [allFormularios, setAllFormularios] = useState<AdminFormulario[]>([]);
+  const [selectedForms, setSelectedForms] = useState<Set<number>>(new Set());
+  const [loadingForms, setLoadingForms] = useState(false);
+  const [showFormSelector, setShowFormSelector] = useState(false);
+
+  const [iconCat, setIconCat] = useState<IconCategory | "Todos">("Académico");
+  const flatListRef = React.useRef<FlatList>(null);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+
+  const CATS = ["Todos", ...ICON_CATEGORIES];
 
   useEffect(() => {
-    if (visible) {
-      setTitulo(modulo?.modulo ?? "");
-      setDescripcion(modulo?.descripcion ?? "");
-      setIconoKey(modulo?.icono ?? "home");
-      setErrors({});
-    }
+    if (!visible) return;
+    setTitulo(modulo?.modulo ?? "");
+    setDescripcion(modulo?.descripcion ?? "");
+    setIconoKey(modulo?.icono ?? "home");
+    setEstado(modulo?.estado ?? "Activo");
+    setErrors({});
+
+    // Pre-seleccionar formularios del módulo
+    const preSelected = new Set(
+      (modulo?.formularios ?? []).map((f) => f.id),
+    );
+    setSelectedForms(preSelected);
+
+    // Cargar todos los formularios disponibles
+    setLoadingForms(true);
+    adminService
+      .getFormularios()
+      .then((data) => setAllFormularios(data))
+      .catch(() => {})
+      .finally(() => setLoadingForms(false));
   }, [visible, modulo]);
 
   const validate = (): boolean => {
@@ -64,12 +96,6 @@ export function ModuloModal({
     setErrors(e);
     return Object.keys(e).length === 0;
   };
-  const [iconCat, setIconCat] = useState<IconCategory | "Todos">("Académico");
-  const flatListRef = React.useRef<FlatList>(null);
-  const [showRightArrow, setShowRightArrow] = useState(true);
-  const [showLeftArrow, setShowLeftArrow]   = useState(false);
-
-  const CATS = ["Todos", ...ICON_CATEGORIES];
 
   const scrollCats = (dir: "left" | "right") => {
     flatListRef.current?.scrollToOffset({
@@ -77,6 +103,15 @@ export function ModuloModal({
       animated: true,
     });
   };
+
+  const toggleForm = (id: number) => {
+    setSelectedForms((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
@@ -84,6 +119,8 @@ export function ModuloModal({
       modulo: titulo.trim(),
       descripcion: descripcion.trim() || undefined,
       icono: iconoKey,
+      estado,
+      formularios: Array.from(selectedForms),
     });
     setLoading(false);
     if (ok) onClose();
@@ -96,7 +133,6 @@ export function ModuloModal({
       transparent
       onRequestClose={onClose}
     >
-      {/* Fondo oscuro */}
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
@@ -109,16 +145,14 @@ export function ModuloModal({
         pointerEvents="box-none"
       >
         <View style={[styles.sheet, { backgroundColor: c.card }]}>
-
+          {/* Header */}
           <View style={[styles.header, { borderBottomColor: c.border }]}>
             <View>
               <Text style={[styles.headerTitle, { color: c.text }]}>
                 {isEdit ? "Editar Módulo" : "Crear Nuevo Módulo"}
               </Text>
               <Text style={[styles.headerSub, { color: c.textSecondary }]}>
-                {isEdit
-                  ? "Modifica los datos del módulo"
-                  : "Defina la estructura e iconografía"}
+                {isEdit ? "Modifica los datos del módulo" : "Define la estructura e iconografía"}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
@@ -129,13 +163,13 @@ export function ModuloModal({
           <ScrollView
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled={true}  
+            nestedScrollEnabled
             showsVerticalScrollIndicator={false}
           >
-
+            {/* Título */}
             <View style={styles.field}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
-                TÍTULO DEL MÓDULO <Text style={{ color: "#F43F5E" }}>*</Text>
+                TÍTULO DEL MÓDULO <Text style={{ color: c.destructive }}>*</Text>
               </Text>
               <TextInput
                 value={titulo}
@@ -144,101 +178,122 @@ export function ModuloModal({
                   if (errors.titulo) setErrors((e) => ({ ...e, titulo: "" }));
                 }}
                 placeholder="Ej: Control Académico"
-                placeholderTextColor={c.muted}
+                placeholderTextColor={c.textMuted}
                 style={[
                   styles.input,
                   {
                     backgroundColor: c.input,
                     color: c.text,
-                    borderColor: errors.titulo ? "#F43F5E" : c.border,
+                    borderColor: errors.titulo ? c.destructive : c.inputBorder,
                   },
                 ]}
                 maxLength={40}
               />
               {errors.titulo ? (
-                <Text style={styles.errorText}>{errors.titulo}</Text>
+                <Text style={[styles.errorText, { color: c.destructive }]}>
+                  {errors.titulo}
+                </Text>
               ) : null}
             </View>
 
+            {/* Estado */}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: c.textSecondary }]}>ESTADO</Text>
+              <View
+                style={[
+                  styles.switchRow,
+                  { backgroundColor: c.backgroundSecondary, borderColor: c.border },
+                ]}
+              >
+                <View>
+                  <Text style={[styles.switchLabel, { color: c.text }]}>
+                    {estado === "Activo" ? "Activo" : "Inactivo"}
+                  </Text>
+                  <Text style={[styles.switchSub, { color: c.textMuted }]}>
+                    {estado === "Activo" ? "Módulo visible en sidebar" : "Módulo oculto"}
+                  </Text>
+                </View>
+                <Switch
+                  value={estado === "Activo"}
+                  onValueChange={(v) => setEstado(v ? "Activo" : "Inactivo")}
+                  trackColor={{ false: c.border, true: c.success }}
+                  thumbColor={c.primaryForeground}
+                />
+              </View>
+            </View>
+
+            {/* Ícono */}
             <View style={styles.field}>
               <Text style={[styles.label, { color: c.textSecondary }]}>
                 ÍCONO DEL MÓDULO
               </Text>
 
-              {/* Tabs de categoría */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-  
-              {/* Flecha izquierda */}
-              {showLeftArrow && (
-                <TouchableOpacity
-                  onPress={() => scrollCats("left")}
-                  style={[styles.arrowBtn, { borderColor: c.border, backgroundColor: c.input }]}
-                >
-                  <Ionicons name="chevron-back" size={14} color={c.textSecondary} />
-                </TouchableOpacity>
-              )}
-
-              <FlatList
-                ref={flatListRef}
-                data={CATS}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ gap: 6, paddingVertical: 2 }}
-                onScroll={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const max =
-                    e.nativeEvent.contentSize.width -
-                    e.nativeEvent.layoutMeasurement.width;
-                  setShowLeftArrow(x > 10);
-                  setShowRightArrow(x < max - 10);
-                }}
-                scrollEventThrottle={16}
-                renderItem={({ item: cat }) => {
-                  const active = iconCat === cat;
-                  return (
-                    <TouchableOpacity
-                      onPress={() => setIconCat(cat as any)}
-                      style={[
-                        styles.catChip,
-                        {
-                          backgroundColor: active ? "rgba(45,159,142,0.15)" : c.input,
-                          borderColor: active ? c.primary : c.border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "500",
-                          color: active ? c.primary : c.textSecondary,
-                        }}
+                {showLeftArrow && (
+                  <TouchableOpacity
+                    onPress={() => scrollCats("left")}
+                    style={[styles.arrowBtn, { borderColor: c.border, backgroundColor: c.input }]}
+                  >
+                    <Ionicons name="chevron-back" size={14} color={c.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                <FlatList
+                  ref={flatListRef}
+                  data={CATS}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ gap: 6, paddingVertical: 2 }}
+                  onScroll={(e) => {
+                    const x = e.nativeEvent.contentOffset.x;
+                    const max =
+                      e.nativeEvent.contentSize.width -
+                      e.nativeEvent.layoutMeasurement.width;
+                    setShowLeftArrow(x > 10);
+                    setShowRightArrow(x < max - 10);
+                  }}
+                  scrollEventThrottle={16}
+                  renderItem={({ item: cat }) => {
+                    const active = iconCat === cat;
+                    return (
+                      <TouchableOpacity
+                        onPress={() => setIconCat(cat as any)}
+                        style={[
+                          styles.catChip,
+                          {
+                            backgroundColor: active ? `${c.primary}18` : c.input,
+                            borderColor: active ? c.primary : c.border,
+                          },
+                        ]}
                       >
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "500",
+                            color: active ? c.primary : c.textSecondary,
+                          }}
+                        >
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                {showRightArrow && (
+                  <TouchableOpacity
+                    onPress={() => scrollCats("right")}
+                    style={[styles.arrowBtn, { borderColor: c.border, backgroundColor: c.input }]}
+                  >
+                    <Ionicons name="chevron-forward" size={14} color={c.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-              {/* Flecha derecha */}
-              {showRightArrow && (
-                <TouchableOpacity
-                  onPress={() => scrollCats("right")}
-                  style={[styles.arrowBtn, { borderColor: c.border, backgroundColor: c.input }]}
-                >
-                  <Ionicons name="chevron-forward" size={14} color={c.textSecondary} />
-                </TouchableOpacity>
-              )}
-
-            </View>
-
-              {/* Grid de íconos */}
               <View
                 style={[
                   styles.iconGrid,
-                  { borderColor: c.border, backgroundColor: c.input },
+                  { borderColor: c.inputBorder, backgroundColor: c.input },
                 ]}
               >
                 {(iconCat === "Todos"
@@ -253,9 +308,7 @@ export function ModuloModal({
                       style={[
                         styles.iconOption,
                         {
-                          backgroundColor: selected
-                            ? "rgba(45,159,142,0.15)"
-                            : "transparent",
+                          backgroundColor: selected ? `${c.primary}18` : "transparent",
                           borderColor: selected ? c.primary : "transparent",
                         },
                       ]}
@@ -263,7 +316,7 @@ export function ModuloModal({
                       <Ionicons
                         name={ic.ionicon as any}
                         size={22}
-                        color={selected ? c.primary : c.muted}
+                        color={selected ? c.primary : c.textMuted}
                       />
                     </TouchableOpacity>
                   );
@@ -271,29 +324,116 @@ export function ModuloModal({
               </View>
             </View>
 
+            {/* Descripción */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: c.textSecondary }]}>
-                DESCRIPCIÓN
-              </Text>
+              <Text style={[styles.label, { color: c.textSecondary }]}>DESCRIPCIÓN</Text>
               <TextInput
                 value={descripcion}
                 onChangeText={setDescripcion}
                 placeholder="Detalle la función principal de este módulo..."
-                placeholderTextColor={c.muted}
+                placeholderTextColor={c.textMuted}
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
                 textAlignVertical="top"
                 style={[
                   styles.input,
                   styles.textarea,
-                  { backgroundColor: c.input, color: c.text, borderColor: c.border },
+                  { backgroundColor: c.input, color: c.text, borderColor: c.inputBorder },
                 ]}
               />
             </View>
 
+            {/* Formularios vinculados */}
+            <View style={styles.field}>
+              <View style={styles.formSelectorHeader}>
+                <Text style={[styles.label, { color: c.textSecondary }]}>
+                  FORMULARIOS VINCULADOS
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowFormSelector((v) => !v)}
+                  style={[styles.toggleFormBtn, { borderColor: c.border }]}
+                >
+                  <Text style={[styles.toggleFormBtnText, { color: c.primary }]}>
+                    {showFormSelector ? "Ocultar" : `Seleccionar (${selectedForms.size})`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {showFormSelector && (
+                <View
+                  style={[
+                    styles.formSelectorBox,
+                    { borderColor: c.border, backgroundColor: c.backgroundSecondary },
+                  ]}
+                >
+                  {loadingForms ? (
+                    <ActivityIndicator size="small" color={c.primary} style={{ padding: 16 }} />
+                  ) : (
+                    allFormularios.map((f) => {
+                      const checked = selectedForms.has(f.id);
+                      return (
+                        <TouchableOpacity
+                          key={f.id}
+                          onPress={() => toggleForm(f.id)}
+                          style={[
+                            styles.formItem,
+                            { borderBottomColor: c.border },
+                            checked && { backgroundColor: `${c.primary}10` },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.checkBox,
+                              {
+                                borderColor: checked ? c.primary : c.border,
+                                backgroundColor: checked ? c.primary : "transparent",
+                              },
+                            ]}
+                          >
+                            {checked && (
+                              <Ionicons name="checkmark" size={11} color={c.primaryForeground} />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.formItemName, { color: c.text }]}>
+                              {f.formulario}
+                            </Text>
+                            {f.ruta ? (
+                              <Text style={[styles.formItemRoute, { color: c.textMuted }]}>
+                                {f.ruta}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              )}
+
+              {!showFormSelector && selectedForms.size > 0 && (
+                <View style={styles.selectedChips}>
+                  {allFormularios
+                    .filter((f) => selectedForms.has(f.id))
+                    .map((f) => (
+                      <View
+                        key={f.id}
+                        style={[styles.chip, { backgroundColor: `${c.primary}18`, borderColor: c.primary }]}
+                      >
+                        <Text style={[styles.chipText, { color: c.primary }]}>
+                          {f.formulario}
+                        </Text>
+                        <TouchableOpacity onPress={() => toggleForm(f.id)} hitSlop={8}>
+                          <Ionicons name="close" size={12} color={c.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                </View>
+              )}
+            </View>
           </ScrollView>
 
-          {/* ── Footer con botones ── */}
+          {/* Footer */}
           <View style={[styles.footer, { borderTopColor: c.border }]}>
             <TouchableOpacity
               onPress={onClose}
@@ -308,7 +448,6 @@ export function ModuloModal({
               onPress={handleSubmit}
               disabled={loading}
               style={[styles.btnSubmit, { backgroundColor: c.primary }, loading && { opacity: 0.7 }]}
-              
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -317,9 +456,9 @@ export function ModuloModal({
                   <Ionicons
                     name={isEdit ? "checkmark-circle-outline" : "add-circle-outline"}
                     size={18}
-                    color={c.textInverse}
+                    color={c.primaryForeground}
                   />
-                  <Text style={[styles.btnSubmitText, { color: c.textInverse }]}>
+                  <Text style={[styles.btnSubmitText, { color: c.primaryForeground }]}>
                     {isEdit ? "Guardar cambios" : "Crear Módulo"}
                   </Text>
                 </>
@@ -332,7 +471,6 @@ export function ModuloModal({
   );
 }
 
-
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -340,17 +478,15 @@ const styles = StyleSheet.create({
   },
   kvWrapper: {
     flex: 1,
-    justifyContent: "center",   
-    alignItems: "center",      
-    paddingHorizontal: 24, 
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
   },
   sheet: {
     width: "100%",
-    maxWidth: 520,              
-    borderRadius: 16,          
-    maxHeight: "85%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    maxWidth: 520,
+    borderRadius: 20,
+    maxHeight: "90%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
@@ -364,24 +500,13 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 0.5,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  body: {
-    padding: 20,
-    gap: 20,
-  },
-  field: {
-    gap: 8,
-  },
+  headerTitle: { fontSize: 16, fontWeight: "700" },
+  headerSub: { fontSize: 12, marginTop: 2 },
+  body: { padding: 20, gap: 20 },
+  field: { gap: 8 },
   label: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
   input: {
@@ -391,15 +516,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
-  textarea: {
-    height: 90,
-    paddingTop: 12,
+  textarea: { height: 80, paddingTop: 12 },
+  errorText: { fontSize: 12, marginTop: 2 },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  errorText: {
-    fontSize: 12,
-    color: "#F43F5E",
-    marginTop: 2,
-  },
+  switchLabel: { fontSize: 14, fontWeight: "700" },
+  switchSub: { fontSize: 12, marginTop: 2 },
   iconGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -416,37 +545,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  footer: {
-    flexDirection: "row",
-    gap: 10,
-    padding: 16,
-    borderTopWidth: 0.5,
-  },
-  btnCancel: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
-  btnCancelText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  btnSubmit: {
-    flex: 2,
-    borderRadius: 10,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  btnSubmitText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   catChip: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -461,4 +559,80 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  formSelectorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  toggleFormBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  toggleFormBtnText: { fontSize: 12, fontWeight: "600" },
+  formSelectorBox: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+    maxHeight: 200,
+  },
+  formItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+  },
+  checkBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  formItemName: { fontSize: 13, fontWeight: "600" },
+  formItemRoute: { fontSize: 11, marginTop: 1 },
+  selectedChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  chipText: { fontSize: 11, fontWeight: "600" },
+  footer: {
+    flexDirection: "row",
+    gap: 10,
+    padding: 16,
+    borderTopWidth: 0.5,
+  },
+  btnCancel: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  btnCancelText: { fontSize: 14, fontWeight: "500" },
+  btnSubmit: {
+    flex: 2,
+    borderRadius: 10,
+    paddingVertical: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  btnSubmitText: { fontSize: 14, fontWeight: "600" },
 });
