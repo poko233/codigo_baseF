@@ -21,6 +21,13 @@ export interface SucursalEnEmpresa {
   estado: string;
 }
 
+export interface SucursalDirecta {
+  id: number;
+  sucursal: string;
+  ciudad: string | null;
+  estado: string;
+}
+
 export interface EmpresaDisponible {
   id: number;
   empresa: string;
@@ -51,7 +58,8 @@ export interface Usuario {
   fecha_nac: string;
   foto: string | null;
   codigo_qr: string | null;
-  empresas: EmpresaDisponible[]; // ahora cada empresa tiene sucursales
+  empresas?: EmpresaDisponible[];
+  sucursales: SucursalDirecta[];
   roles: RolUsuario[];
 }
 

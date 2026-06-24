@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, View } from "react-native";
+import { PermisoGate } from "../../../../components/PermisoGate";
 import { ThemedText } from "../../../../components/ThemedText";
 import { useTheme } from "../../../../theme/useTheme";
 
@@ -53,22 +54,23 @@ export default function RolHeader({ onCreate, isMobile }: Props) {
           </ThemedText>
         </View>
 
-        <Pressable
-          onPress={onCreate}
-          style={[styles.button, { backgroundColor: colors.primary }]}
-        >
-          <Ionicons
-            name="add-circle-outline"
-            size={18}
-            color={colors.primaryForeground}
-          />
-
-          <ThemedText
-            style={[styles.buttonText, { color: colors.primaryForeground }]}
+        <PermisoGate modulo="Roles" formulario="Roles" accion="Crear">
+          <Pressable
+            onPress={onCreate}
+            style={[styles.button, { backgroundColor: colors.primary }]}
           >
-            Nuevo Rol
-          </ThemedText>
-        </Pressable>
+            <Ionicons
+              name="add-circle-outline"
+              size={18}
+              color={colors.primaryForeground}
+            />
+            <ThemedText
+              style={[styles.buttonText, { color: colors.primaryForeground }]}
+            >
+              Nuevo Rol
+            </ThemedText>
+          </Pressable>
+        </PermisoGate>
       </View>
     </View>
   );

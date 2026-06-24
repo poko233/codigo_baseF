@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from "react-native";
+import { useConfirm } from "../../../hooks/useConfirm";
 import { ThemedText } from "../../../components/ThemedText";
 import { useTheme } from "../../../theme/useTheme";
 import RolFormModal from "./components/RolFormModal";
@@ -27,6 +27,7 @@ export default function RolScreen({ onPermisos }: Props) {
   const colors: any = theme.colors;
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
+  const confirm = useConfirm();
 
   const {
     filteredRoles,
@@ -58,21 +59,19 @@ export default function RolScreen({ onPermisos }: Props) {
     return await createRol(payload);
   };
 
-  const handleDelete = (rol: Rol) => {
-    const eliminar = () => deleteRol(rol.id);
+  const handleDelete = async (rol: Rol) => {
     if (Platform.OS === "web") {
       const ok = globalThis.confirm?.(`¿Eliminar el rol "${rol.rol}"?`);
-      if (ok) eliminar();
+      if (ok) deleteRol(rol.id);
       return;
     }
-    Alert.alert(
-      "Eliminar rol",
-      `¿Seguro que quieres eliminar el rol "${rol.rol}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Eliminar", style: "destructive", onPress: eliminar },
-      ],
-    );
+    const ok = await confirm({
+      title: "Eliminar rol",
+      message: `¿Seguro que quieres eliminar el rol "${rol.rol}"?`,
+      variant: "danger",
+      confirmText: "Eliminar",
+    });
+    if (ok) deleteRol(rol.id);
   };
 
   return (

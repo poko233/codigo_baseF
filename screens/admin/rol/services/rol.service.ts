@@ -1,6 +1,5 @@
 import { httpClient } from "@http";
 import { CK, TTL, configCache } from "../../../../cache/configCache";
-import { useAuthStore } from "../../../../store/authStore";
 import { useModulesStore } from "../../../../store/modulesStore";
 import {
   PermisoSync,
@@ -10,7 +9,7 @@ import {
 } from "../types/rol.types";
 
 function empId() {
-  return useAuthStore.getState().empresaId ?? 0;
+  return 0;
 }
 
 export const rolService = {

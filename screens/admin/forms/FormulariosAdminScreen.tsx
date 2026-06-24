@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Platform,
   StyleSheet,
@@ -11,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { PermisoGate } from "../../../components/PermisoGate";
+import { useConfirm } from "../../../hooks/useConfirm";
 import { useTheme } from "../../../theme/useTheme";
 import { AdminFormulario, CreateFormularioPayload } from "../types/admin.types";
 import { FormularioFormModal } from "./FormularioFormModal";
@@ -19,6 +20,7 @@ import { useFormularios } from "./useFormularios";
 export function FormulariosAdminScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
+  const confirm = useConfirm();
 
   const {
     formularios,
@@ -61,20 +63,18 @@ export function FormulariosAdminScreen() {
     }
   };
 
-  const handleDelete = (item: AdminFormulario) => {
-    const doDelete = () => deleteFormulario(item.id);
+  const handleDelete = async (item: AdminFormulario) => {
     if (Platform.OS === "web") {
-      if (globalThis.confirm?.(`¿Eliminar "${item.formulario}"?`)) doDelete();
+      if (globalThis.confirm?.(`¿Eliminar "${item.formulario}"?`)) deleteFormulario(item.id);
       return;
     }
-    Alert.alert(
-      "Eliminar formulario",
-      `¿Seguro que quieres eliminar "${item.formulario}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Eliminar", style: "destructive", onPress: doDelete },
-      ],
-    );
+    const ok = await confirm({
+      title: "Eliminar formulario",
+      message: `¿Seguro que quieres eliminar "${item.formulario}"?`,
+      variant: "danger",
+      confirmText: "Eliminar",
+    });
+    if (ok) deleteFormulario(item.id);
   };
 
   return (
@@ -92,17 +92,19 @@ export function FormulariosAdminScreen() {
             {formularios.length} formulario{formularios.length === 1 ? "" : "s"} registrados
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={openCreate}
-          style={[styles.addButton, { backgroundColor: c.primary }]}
-          accessibilityLabel="Nuevo formulario"
-          accessibilityRole="button"
-        >
-          <Ionicons name="add" size={18} color={c.primaryForeground} />
-          <Text style={[styles.addButtonText, { color: c.primaryForeground }]}>
-            Nuevo
-          </Text>
-        </TouchableOpacity>
+        <PermisoGate modulo="Formularios" formulario="Formularios" accion="Crear">
+          <TouchableOpacity
+            onPress={openCreate}
+            style={[styles.addButton, { backgroundColor: c.primary }]}
+            accessibilityLabel="Nuevo formulario"
+            accessibilityRole="button"
+          >
+            <Ionicons name="add" size={18} color={c.primaryForeground} />
+            <Text style={[styles.addButtonText, { color: c.primaryForeground }]}>
+              Nuevo
+            </Text>
+          </TouchableOpacity>
+        </PermisoGate>
       </View>
 
       {/* Buscador */}
@@ -233,22 +235,26 @@ export function FormulariosAdminScreen() {
                 </View>
 
                 <View style={styles.rowActions}>
-                  <TouchableOpacity
-                    onPress={() => openEdit(item)}
-                    style={[styles.actionBtn, { borderColor: c.border }]}
-                    accessibilityLabel={`Editar ${item.formulario}`}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="pencil-outline" size={15} color={c.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDelete(item)}
-                    style={[styles.actionBtn, { borderColor: c.destructive }]}
-                    accessibilityLabel={`Eliminar ${item.formulario}`}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="trash-outline" size={15} color={c.destructive} />
-                  </TouchableOpacity>
+                  <PermisoGate modulo="Formularios" formulario="Formularios" accion="Editar">
+                    <TouchableOpacity
+                      onPress={() => openEdit(item)}
+                      style={[styles.actionBtn, { borderColor: c.border }]}
+                      accessibilityLabel={`Editar ${item.formulario}`}
+                      accessibilityRole="button"
+                    >
+                      <Ionicons name="pencil-outline" size={15} color={c.primary} />
+                    </TouchableOpacity>
+                  </PermisoGate>
+                  <PermisoGate modulo="Formularios" formulario="Formularios" accion="Eliminar">
+                    <TouchableOpacity
+                      onPress={() => handleDelete(item)}
+                      style={[styles.actionBtn, { borderColor: c.destructive }]}
+                      accessibilityLabel={`Eliminar ${item.formulario}`}
+                      accessibilityRole="button"
+                    >
+                      <Ionicons name="trash-outline" size={15} color={c.destructive} />
+                    </TouchableOpacity>
+                  </PermisoGate>
                 </View>
               </View>
             );

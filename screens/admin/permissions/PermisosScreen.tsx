@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useConfirm } from "../../../hooks/useConfirm";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
@@ -146,6 +146,7 @@ export function PermisosScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
 
+  const confirm = useConfirm();
   const {
     rolesFiltrados,
     modulos,
@@ -173,16 +174,20 @@ export function PermisosScreen() {
     return modulos.find((m) => String(m.id) === key) ?? modulos[0];
   }, [modulos, activeKey]);
 
-  function handleCancelar() {
+  async function handleCancelar() {
     if (!hayCambios) return;
     if (Platform.OS === "web") {
       if (globalThis.confirm?.("¿Descartar cambios?")) recargar();
       return;
     }
-    Alert.alert("Descartar cambios", "¿Quieres descartar los cambios no guardados?", [
-      { text: "Seguir editando", style: "cancel" },
-      { text: "Descartar", style: "destructive", onPress: recargar },
-    ]);
+    const ok = await confirm({
+      title: "Descartar cambios",
+      message: "¿Quieres descartar los cambios no guardados?",
+      variant: "warning",
+      confirmText: "Descartar",
+      cancelText: "Seguir editando",
+    });
+    if (ok) recargar();
   }
 
   // Carga inicial de la estructura (roles, módulos, formularios)

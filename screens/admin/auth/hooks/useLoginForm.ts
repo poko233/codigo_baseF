@@ -102,8 +102,7 @@ export function useLoginForm({ empresa }: UseLoginFormOptions) {
 
     try {
       const response = await loginUser(form);
-      // login del contexto: guarda token, empresaId, empresaNombre y carga /me
-      await login(response.token, response.empresa.id, response.empresa.nombre);
+      await login(response.token);
       // La redirección se maneja en el efecto que observa `user`
     } catch (err: any) {
       const message = err?.message || "Error inesperado";

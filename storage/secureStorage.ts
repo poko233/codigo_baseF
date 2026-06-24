@@ -144,10 +144,12 @@ export async function getToken(): Promise<string | null> {
   return encryptedGetItem(TOKEN_KEY);
 }
 
+/** @deprecated Multi-empresa desactivado. No usar en código nuevo. */
 export async function saveEmpresaId(id: number): Promise<void> {
   await encryptedSetItem(EMPRESA_ID_KEY, String(id));
 }
 
+/** @deprecated Multi-empresa desactivado. No usar en código nuevo. */
 export async function getEmpresaId(): Promise<number | null> {
   const raw = await encryptedGetItem(EMPRESA_ID_KEY);
   if (!raw) return null;

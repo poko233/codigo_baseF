@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { PermisoGate } from "../../../../components/PermisoGate";
 import { ThemedText } from "../../../../components/ThemedText";
 import { useTheme } from "../../../../theme/useTheme";
 import { Rol } from "../types/rol.types";
@@ -149,41 +150,47 @@ export default function RolTable({
 
             <View style={styles.colActions}>
               <View style={styles.actionsRow}>
-                <Pressable
-                  onPress={() => onPermisos(item)}
-                  style={[styles.iconButton, { borderColor: c.info ?? c.primary }]}
-                  accessibilityLabel={`Permisos de ${item.rol}`}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="key-outline" size={17} color={c.info ?? c.primary} />
-                </Pressable>
+                <PermisoGate modulo="Roles" formulario="Roles" accion="Editar">
+                  <Pressable
+                    onPress={() => onPermisos(item)}
+                    style={[styles.iconButton, { borderColor: c.info ?? c.primary }]}
+                    accessibilityLabel={`Permisos de ${item.rol}`}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="key-outline" size={17} color={c.info ?? c.primary} />
+                  </Pressable>
+                </PermisoGate>
 
-                <Pressable
-                  onPress={() => onEdit(item)}
-                  style={[styles.iconButton, { borderColor: c.border }]}
-                  accessibilityLabel={`Editar ${item.rol}`}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="pencil-outline" size={17} color={c.primary} />
-                </Pressable>
+                <PermisoGate modulo="Roles" formulario="Roles" accion="Editar">
+                  <Pressable
+                    onPress={() => onEdit(item)}
+                    style={[styles.iconButton, { borderColor: c.border }]}
+                    accessibilityLabel={`Editar ${item.rol}`}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="pencil-outline" size={17} color={c.primary} />
+                  </Pressable>
+                </PermisoGate>
 
-                <Pressable
-                  onPress={() => onDelete(item)}
-                  disabled={deletingId === item.id}
-                  style={[
-                    styles.iconButton,
-                    { borderColor: c.destructive },
-                    deletingId === item.id && styles.disabled,
-                  ]}
-                  accessibilityLabel={`Eliminar ${item.rol}`}
-                  accessibilityRole="button"
-                >
-                  {deletingId === item.id ? (
-                    <ActivityIndicator size="small" color={c.destructive} />
-                  ) : (
-                    <Ionicons name="trash-outline" size={17} color={c.destructive} />
-                  )}
-                </Pressable>
+                <PermisoGate modulo="Roles" formulario="Roles" accion="Eliminar">
+                  <Pressable
+                    onPress={() => onDelete(item)}
+                    disabled={deletingId === item.id}
+                    style={[
+                      styles.iconButton,
+                      { borderColor: c.destructive },
+                      deletingId === item.id && styles.disabled,
+                    ]}
+                    accessibilityLabel={`Eliminar ${item.rol}`}
+                    accessibilityRole="button"
+                  >
+                    {deletingId === item.id ? (
+                      <ActivityIndicator size="small" color={c.destructive} />
+                    ) : (
+                      <Ionicons name="trash-outline" size={17} color={c.destructive} />
+                    )}
+                  </Pressable>
+                </PermisoGate>
               </View>
             </View>
           </View>

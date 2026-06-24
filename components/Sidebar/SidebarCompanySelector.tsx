@@ -1,5 +1,5 @@
 // components/Sidebar/SidebarCompanySelector.tsx
-import { Building2, ChevronDown, Store } from "lucide-react-native";
+import { Store } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   LayoutAnimation,
@@ -27,56 +27,24 @@ if (
 export const SidebarCompanySelector: React.FC = () => {
   const { theme } = useTheme();
   const c = theme.colors;
-  const {
-    user,
-    empresaId,
-    empresaNombre,
-    sucursalId,
-    changeEmpresa,
-    changeSucursal,
-  } = useAuth();
+  const { user, sucursalId, changeSucursal } = useAuth();
 
-  const [empresaExpanded, setEmpresaExpanded] = useState(false);
   const [sucursalExpanded, setSucursalExpanded] = useState(false);
 
-  const empresas = user?.empresas ?? [];
-
-  // Sucursales de la empresa activa
-  const sucursalesActiva = useMemo(() => {
-    if (!empresaId || !user) return [];
-    const empresa = user.empresas.find((e) => e.id === empresaId);
-    return empresa?.sucursales ?? [];
-  }, [empresaId, user?.empresas]); // user.empresas es más estable que user
-
-  const showEmpresaSelector = empresas.length > 1;
-  const showSucursalSelector = sucursalesActiva.length > 1;
-
-  const empresasDisponibles = empresas.filter((emp) => emp.id !== empresaId);
-  const sucursalesDisponibles = sucursalesActiva.filter(
-    (s) => s.id !== sucursalId,
+  const sucursales = useMemo(
+    () => user?.sucursales ?? [],
+    [user?.sucursales],
   );
 
-  const toggleEmpresa = useCallback(() => {
-    if (!showEmpresaSelector) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setEmpresaExpanded((v) => !v);
-    if (sucursalExpanded) setSucursalExpanded(false);
-  }, [sucursalExpanded, showEmpresaSelector]);
+  const showSucursalSelector = sucursales.length > 1;
+  const sucursalesDisponibles = sucursales.filter((s) => s.id !== sucursalId);
+  const sucursalLabel = sucursales.find((s) => s.id === sucursalId)?.sucursal ?? "—";
 
   const toggleSucursal = useCallback(() => {
     if (!showSucursalSelector) return;
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSucursalExpanded((v) => !v);
-    if (empresaExpanded) setEmpresaExpanded(false);
-  }, [empresaExpanded, showSucursalSelector]);
-
-  const handleSelectEmpresa = useCallback(
-    (id: number, nombre: string) => {
-      setEmpresaExpanded(false);
-      changeEmpresa(id, nombre);
-    },
-    [changeEmpresa],
-  );
+  }, [showSucursalSelector]);
 
   const handleSelectSucursal = useCallback(
     (id: number) => {
@@ -86,104 +54,13 @@ export const SidebarCompanySelector: React.FC = () => {
     [changeSucursal],
   );
 
-  const empresaAnimStyle = useAnimatedStyle(() => ({
-    maxHeight: withTiming(empresaExpanded ? 300 : 0, { duration: 200 }),
-    opacity: withTiming(empresaExpanded ? 1 : 0, { duration: 150 }),
-  }));
-
   const sucursalAnimStyle = useAnimatedStyle(() => ({
     maxHeight: withTiming(sucursalExpanded ? 300 : 0, { duration: 200 }),
     opacity: withTiming(sucursalExpanded ? 1 : 0, { duration: 150 }),
   }));
 
-  const sucursalLabel =
-    sucursalesActiva.find((s) => s.id === sucursalId)?.sucursal ?? "—";
-
   return (
-    <View
-      style={[
-        styles.container,
-        { zIndex: empresaExpanded || sucursalExpanded ? 999 : 1 },
-      ]}
-    >
-      {/* Selector de Empresa */}
-      <View style={[styles.cardWrapper, { zIndex: 2, marginBottom: 10 }]}>
-        <Pressable
-          onPress={toggleEmpresa}
-          disabled={!showEmpresaSelector}
-          //@ts-ignore
-          style={({ pressed, hovered }) => [
-            styles.cardBtn,
-            {
-              backgroundColor:
-                pressed || hovered ? c.cardHover || "rgba(0,0,0,0.02)" : c.card,
-              borderColor: c.border,
-            },
-          ]}
-        >
-          <View style={[styles.iconBox, { backgroundColor: c.primary + "15" }]}>
-            <Building2 size={20} color={c.primary} strokeWidth={2.5} />
-          </View>
-          <View style={styles.textCol}>
-            <Text style={[styles.labelText, { color: c.textSecondary }]}>
-              EMPRESA ACTUAL
-            </Text>
-            <Text
-              style={[styles.valueText, { color: c.text }]}
-              numberOfLines={1}
-            >
-              {empresaNombre || "TECNOLOGICOSF"}
-            </Text>
-          </View>
-          {showEmpresaSelector && (
-            <ChevronDown
-              size={18}
-              color={c.textSecondary}
-              style={{
-                transform: [{ rotate: empresaExpanded ? "180deg" : "0deg" }],
-              }}
-            />
-          )}
-        </Pressable>
-
-        {showEmpresaSelector && (
-          <Animated.View
-            style={[
-              styles.dropdownList,
-              empresaAnimStyle,
-              { backgroundColor: c.card, borderColor: c.border },
-            ]}
-          >
-            <View style={styles.dropdownInner}>
-              {empresasDisponibles.map((emp) => (
-                <Pressable
-                  key={emp.id}
-                  onPress={() => handleSelectEmpresa(emp.id, emp.empresa)}
-                  //@ts-ignore
-                  style={({ pressed, hovered }) => [
-                    styles.dropdownItem,
-                    {
-                      backgroundColor:
-                        pressed || hovered
-                          ? c.cardHover || "rgba(0,0,0,0.04)"
-                          : "transparent",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.dropdownItemText, { color: c.text }]}
-                    numberOfLines={1}
-                  >
-                    {emp.empresa}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Animated.View>
-        )}
-      </View>
-
-      {/* Selector de Sucursal */}
+    <View style={[styles.container, { zIndex: sucursalExpanded ? 999 : 1 }]}>
       <View style={[styles.cardWrapper, { zIndex: 1 }]}>
         <Pressable
           onPress={toggleSucursal}
@@ -198,7 +75,7 @@ export const SidebarCompanySelector: React.FC = () => {
             },
           ]}
         >
-          <View style={[styles.iconBox, { backgroundColor: c.primary + "15" }]}>
+          <View style={[styles.iconBox, { backgroundColor: (c.primary as string) + "15" }]}>
             <Store size={20} color={c.primary} strokeWidth={2.5} />
           </View>
           <View style={styles.textCol}>
@@ -213,7 +90,7 @@ export const SidebarCompanySelector: React.FC = () => {
             </Text>
           </View>
           {showSucursalSelector && (
-            <ChevronDown
+            <Store
               size={18}
               color={c.textSecondary}
               style={{

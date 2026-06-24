@@ -36,8 +36,7 @@ async function request<T>(
     const token = await getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const { empresaId, sucursalId } = useAuthStore.getState();
-    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+    const { sucursalId } = useAuthStore.getState();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
   }
 
@@ -127,8 +126,7 @@ export const httpClient = {
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const { empresaId, sucursalId } = useAuthStore.getState();
-    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+    const { sucursalId } = useAuthStore.getState();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
 
     const response = await fetch(`${BASE_URL}${url}`, {
@@ -160,8 +158,7 @@ export const httpClient = {
     const headers: Record<string, string> = { Accept: accept };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const { empresaId, sucursalId } = useAuthStore.getState();
-    if (empresaId) headers["X-Empresa-Id"] = String(empresaId);
+    const { sucursalId } = useAuthStore.getState();
     if (sucursalId) headers["X-Sucursal-Id"] = String(sucursalId);
 
     const res = await fetch(`${BASE_URL}${path}`, {

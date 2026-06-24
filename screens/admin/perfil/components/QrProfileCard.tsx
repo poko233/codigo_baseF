@@ -5,12 +5,12 @@ import { Download } from "lucide-react-native";
 import { MotiView } from "moti";
 import React from "react";
 import {
-  Alert,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { useTheme } from "../../../../theme/useTheme";
 import { usePerfilData } from "../hooks/usePerfilData";
 
@@ -49,11 +49,11 @@ export const QrProfileCard = () => {
             UTI: "public.png",
           });
         } else {
-          Alert.alert("Descarga", "Archivo guardado en: " + fileUri);
+          Toast.show({ type: "info", text1: "Descarga", text2: "Archivo guardado en: " + fileUri });
         }
       }
     } catch (error) {
-      Alert.alert("Error", "No se pudo descargar la imagen.");
+      Toast.show({ type: "error", text1: "Error", text2: "No se pudo descargar la imagen." });
       console.error(error);
     }
   };

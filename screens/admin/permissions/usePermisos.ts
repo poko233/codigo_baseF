@@ -1,7 +1,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Toast from "react-native-toast-message";
-import { Alert, Platform } from "react-native";
 import { CK, configCache, TTL } from "../../../cache/configCache";
 import { useModulesStore } from "../../../store/modulesStore";
 import { adminService } from "../services/admin.service";
@@ -223,23 +222,6 @@ export function usePermisos() {
     }
   }
 
-  // ── Cancelar con confirmación si hay cambios ──────────────────────────────
-  function cancelar() {
-    if (!hayCambios) return;
-    if (Platform.OS === "web") {
-      if (globalThis.confirm?.("¿Descartar los cambios?")) cargar();
-      return;
-    }
-    Alert.alert(
-      "Descartar cambios",
-      "¿Quieres descartar los cambios no guardados?",
-      [
-        { text: "Seguir editando", style: "cancel" },
-        { text: "Descartar", style: "destructive", onPress: cargar },
-      ],
-    );
-  }
-
   const hayCambios = !matricesIguales(matriz, matrizInicialRef.current);
 
   const rolesFiltrados = search.trim()
@@ -261,7 +243,6 @@ export function usePermisos() {
     setSearch,
     toggle,
     guardar,
-    cancelar,
     recargar: cargar,
   };
 }

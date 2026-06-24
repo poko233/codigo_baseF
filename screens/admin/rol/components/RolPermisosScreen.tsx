@@ -3,7 +3,6 @@ import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { useConfirm } from "../../../../hooks/useConfirm";
 import { useTheme } from "../../../../theme/useTheme";
 import { moduloService } from "../../modulos/services/modulo.service";
 import { Modulo } from "../../modulos/types/modulo.types";
@@ -35,6 +35,7 @@ type Props = {
 export function RolPermisosScreen({ rol, onBack }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
+  const confirm = useConfirm();
 
   const [modulos, setModulos] = useState<Modulo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,16 +188,16 @@ export function RolPermisosScreen({ rol, onBack }: Props) {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (!hasChanges) { onBack(); return; }
-    Alert.alert(
-      "Cambios sin guardar",
-      "¿Quieres salir sin guardar los cambios?",
-      [
-        { text: "Seguir editando", style: "cancel" },
-        { text: "Salir sin guardar", style: "destructive", onPress: onBack },
-      ],
-    );
+    const ok = await confirm({
+      title: "Cambios sin guardar",
+      message: "¿Quieres salir sin guardar los cambios?",
+      variant: "warning",
+      confirmText: "Salir sin guardar",
+      cancelText: "Seguir editando",
+    });
+    if (ok) onBack();
   };
 
   const totalForms = modulos.reduce(

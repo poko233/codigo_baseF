@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { PermisoGate } from "../../../components/PermisoGate";
 import { ModuloCard } from "./components/ModuloCard";
 import { ModuloModal } from "./components/Modulomodal";
 import { useModulos } from "./hooks/useModulos";
@@ -71,14 +72,17 @@ export function ModulosScreen() {
             {modulos.length} módulo{modulos.length !== 1 ? "s" : ""} registrados
           </Text>
         </View>
-        <TouchableOpacity 
-          onPress={openCreate} 
-          style={[styles.btnNuevo, { backgroundColor: c.primary }]}
+        <PermisoGate modulo="Módulos" formulario="Módulos" accion="Crear">
+          <TouchableOpacity
+            onPress={openCreate}
+            style={[styles.btnNuevo, { backgroundColor: c.primary }]}
           >
-          <Ionicons name="add" size={18} color={c.primaryForeground} />
-          <Text style={[styles.btnNuevoText, { color: c.primaryForeground }]}>
-            Nuevo</Text>
-        </TouchableOpacity>
+            <Ionicons name="add" size={18} color={c.primaryForeground} />
+            <Text style={[styles.btnNuevoText, { color: c.primaryForeground }]}>
+              Nuevo
+            </Text>
+          </TouchableOpacity>
+        </PermisoGate>
       </View>
 
       {/* ── Buscador ── */}

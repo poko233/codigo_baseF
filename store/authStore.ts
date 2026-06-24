@@ -7,9 +7,7 @@ import { fetchMe } from "../screens/admin/auth/services/auth.service";
 import type { Usuario } from "../screens/admin/auth/types/auth.types";
 import {
   clearSession,
-  getEmpresaId,
   getToken,
-  saveEmpresaId,
   saveToken,
 } from "../storage/secureStorage";
 import { useModulesStore } from "./modulesStore";
@@ -18,33 +16,23 @@ import { getTabsForRoles } from "../utils/roleBasedTabs";
 interface AuthState {
   user: Usuario | null;
   loading: boolean;
-  empresaId: number | null;
-  empresaNombre: string | null;
   sucursalId: number | null;
   roles: string[];
   allowedRoutes: Set<string>;
 
   initialize: () => Promise<void>;
-  login: (
-    token: string,
-    empresaId: number,
-    empresaNombre: string,
-  ) => Promise<void>;
+  login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
-  changeEmpresa: (empresaId: number, empresaNombre: string) => Promise<void>;
   changeSucursal: (sucursalId: number | null) => Promise<void>;
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
 
   _loadProfile: () => Promise<void>;
-  _setSucursalFromEmpresa: (empresaId: number) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
-  empresaId: null,
-  empresaNombre: null,
   sucursalId: null,
   roles: [],
   allowedRoutes: new Set(),
@@ -52,9 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     try {
       const storedToken = await getToken();
-      const storedEmpresaId = await getEmpresaId();
-      if (storedToken && storedEmpresaId) {
-        set({ empresaId: storedEmpresaId });
+      if (storedToken) {
         await get()._loadProfile();
       }
     } catch {
@@ -64,16 +50,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (token, empId, empNombre) => {
+  login: async (token) => {
     await saveToken(token);
-    await saveEmpresaId(empId);
-    set({ empresaId: empId, empresaNombre: empNombre, sucursalId: null });
     await get()._loadProfile();
 
+    const userName = get().user?.nombres ?? "usuario";
     Toast.show({
       type: "success",
       text1: "Inicio de sesión exitoso",
-      text2: `Bienvenido a ${empNombre}.`,
+      text2: `Bienvenido de vuelta, ${userName}.`,
     });
   },
 
@@ -86,25 +71,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     clearModulos();
     set({
       user: null,
-      empresaId: null,
-      empresaNombre: null,
       sucursalId: null,
       roles: [],
       allowedRoutes: new Set(),
       loading: false,
     });
-  },
-
-  changeEmpresa: async (newEmpresaId, newEmpresaNombre) => {
-    await saveEmpresaId(newEmpresaId);
-    set({ empresaId: newEmpresaId, empresaNombre: newEmpresaNombre });
-    get()._setSucursalFromEmpresa(newEmpresaId);
-
-    const { clearModulos, fetchModulos } = useModulesStore.getState();
-    clearModulos();
-    await fetchModulos();
-    const moduleRoutes = useModulesStore.getState().allowedRoutes;
-    set({ allowedRoutes: new Set([...moduleRoutes]) });
   },
 
   changeSucursal: async (newSucursalId) => {
@@ -118,19 +89,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   _loadProfile: async () => {
     try {
       const userData = await fetchMe();
-      const currentEmpresaId =
-        get().empresaId ?? userData.empresas[0]?.id ?? null;
-      const empresaNombre =
-        userData.empresas.find((e) => e.id === currentEmpresaId)?.empresa ?? "";
+
+      // Tomar la primera sucursal activa directamente del usuario
+      const primeraSucursal =
+        userData.sucursales?.find((s) => s.estado === "Activo")?.id ??
+        userData.sucursales?.[0]?.id ??
+        null;
 
       set({
         user: userData,
-        empresaId: currentEmpresaId,
-        empresaNombre,
+        sucursalId: get().sucursalId ?? primeraSucursal,
         roles: userData.roles.map((r) => r.rol),
       });
-
-      get()._setSucursalFromEmpresa(currentEmpresaId!);
 
       const { fetchModulos } = useModulesStore.getState();
       await fetchModulos();
@@ -147,26 +117,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       clearModulos();
       set({
         user: null,
-        empresaId: null,
-        empresaNombre: null,
         sucursalId: null,
         roles: [],
         allowedRoutes: new Set(),
       });
-    }
-  },
-
-  _setSucursalFromEmpresa: (empId) => {
-    const { user } = get();
-    if (!user || !empId) {
-      set({ sucursalId: null });
-      return;
-    }
-    const empresa = user.empresas.find((e) => e.id === empId);
-    if (empresa && empresa.sucursales.length > 0) {
-      set({ sucursalId: empresa.sucursales[0].id });
-    } else {
-      set({ sucursalId: null });
     }
   },
 }));
@@ -177,14 +131,11 @@ export const useAuth = () => {
       user: state.user,
       loading: state.loading,
       isAdmin: state.roles.some((r) => r.toLowerCase() === "administrador"),
-      empresaId: state.empresaId,
-      empresaNombre: state.empresaNombre,
       sucursalId: state.sucursalId,
       roles: state.roles,
       allowedRoutes: state.allowedRoutes,
       login: state.login,
       logout: state.logout,
-      changeEmpresa: state.changeEmpresa,
       changeSucursal: state.changeSucursal,
       hasRole: state.hasRole,
       hasAnyRole: state.hasAnyRole,

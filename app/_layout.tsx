@@ -4,13 +4,14 @@ import { Slot, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { MobileDrawer } from "../components/MobileDrawer";
 import { Toaster } from "../components/Toaster";
 import { MobileDrawerProvider } from "../contexts/MobileDrawerContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import "../global.css";
 import { useTheme } from "../theme/useTheme";
-import { useAuthStore } from "../store/authStore"; // ← nuevo
+import { useAuthStore } from "../store/authStore";
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
@@ -49,6 +50,7 @@ function AppContent() {
         {showDrawer && <MobileDrawer />}
       </MobileDrawerProvider>
       <Toaster />
+      <ConfirmModal />
     </>
   );
 }

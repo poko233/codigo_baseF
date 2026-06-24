@@ -1,6 +1,5 @@
 import { httpClient } from "@http";
 import { CK, TTL, configCache } from "../../../../cache/configCache";
-import { useAuthStore } from "../../../../store/authStore";
 import { useModulesStore } from "../../../../store/modulesStore";
 import {
   CreateModuloPayload,
@@ -9,7 +8,7 @@ import {
 } from "../types/modulo.types";
 
 function empId() {
-  return useAuthStore.getState().empresaId ?? 0;
+  return 0;
 }
 
 async function invalidateAndRefresh() {

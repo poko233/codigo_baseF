@@ -1,6 +1,5 @@
 import { httpClient } from "@http";
 import { CK, TTL, configCache } from "../../../cache/configCache";
-import { useAuthStore } from "../../../store/authStore";
 import { useModulesStore } from "../../../store/modulesStore";
 import {
   AdminFormulario,
@@ -15,7 +14,7 @@ interface ApiList<T>  { success: boolean; data: T[] }
 interface ApiItem<T>  { success: boolean; message?: string; data: T }
 
 function empId() {
-  return useAuthStore.getState().empresaId ?? 0;
+  return 0;
 }
 
 async function invalidateFormulariosAndRefresh() {
