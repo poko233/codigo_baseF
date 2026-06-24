@@ -72,7 +72,7 @@ export function ModulosScreen() {
             {modulos.length} módulo{modulos.length !== 1 ? "s" : ""} registrados
           </Text>
         </View>
-        <PermisoGate modulo="Módulos" formulario="Módulos" accion="Crear">
+        <PermisoGate modulo="Configuracion" formulario="Modulos" accion="Crear">
           <TouchableOpacity
             onPress={openCreate}
             style={[styles.btnNuevo, { backgroundColor: c.primary }]}

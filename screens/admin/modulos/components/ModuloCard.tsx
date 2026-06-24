@@ -59,7 +59,7 @@ export function ModuloCard({ modulo, onEdit, onDelete }: ModuloCardProps) {
       </View>
 
       <View style={styles.actions}>
-        <PermisoGate modulo="Módulos" formulario="Módulos" accion="Editar">
+        <PermisoGate modulo="Configuracion" formulario="Modulos" accion="Editar">
           <TouchableOpacity
             onPress={() => onEdit(modulo)}
             style={[styles.actionBtn, { borderColor: c.border }]}
@@ -68,7 +68,7 @@ export function ModuloCard({ modulo, onEdit, onDelete }: ModuloCardProps) {
             <Ionicons name="pencil-outline" size={16} color={c.text} />
           </TouchableOpacity>
         </PermisoGate>
-        <PermisoGate modulo="Módulos" formulario="Módulos" accion="Eliminar">
+        <PermisoGate modulo="Configuracion" formulario="Modulos" accion="Eliminar">
           <TouchableOpacity
             onPress={handleDelete}
             style={[styles.actionBtn, { borderColor: c.border }]}

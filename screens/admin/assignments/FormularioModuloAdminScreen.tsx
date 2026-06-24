@@ -18,7 +18,7 @@ import { useFormularios } from "../forms/useFormularios";
 import { useFormularioModulos } from "./useFormularioModulos";
 
 export function FormularioModuloAdminScreen() {
-  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [confirmId, setConfirmId] = useState<{ id_formulario: number; id_modulo: number } | null>(null);
   const { theme } = useTheme();
   const c = theme.colors;
   const { formularios } = useFormularios();
@@ -54,7 +54,6 @@ export function FormularioModuloAdminScreen() {
         `#${item.id_modulo}`;
       return {
         key: `${item.id_formulario}-${item.id_modulo}`,
-        id: item.id,
         id_formulario: item.id_formulario,
         id_modulo: item.id_modulo,
         formulario,
@@ -232,7 +231,7 @@ export function FormularioModuloAdminScreen() {
                     {item.modulo}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => setConfirmId(item.id)}
+                    onPress={() => setConfirmId({ id_formulario: item.id_formulario, id_modulo: item.id_modulo })}
                     style={{
                       width: 30,
                       height: 30,
@@ -340,7 +339,7 @@ export function FormularioModuloAdminScreen() {
               <TouchableOpacity
                 onPress={async () => {
                   if (!confirmId) return;
-                  await removeAssignment(confirmId);
+                  await removeAssignment(confirmId.id_formulario, confirmId.id_modulo);
                   setConfirmId(null);
                 }}
                 style={{

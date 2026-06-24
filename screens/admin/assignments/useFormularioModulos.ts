@@ -3,22 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import Toast from "react-native-toast-message";
 import { adminService } from "../services/admin.service";
 import { CreateFormularioModuloPayload, FormularioModuloAssignment } from "../types/admin.types";
+
 export function useFormularioModulos() {
   const [assignments, setAssignments] = useState<FormularioModuloAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const removeAssignment = async (id: number): Promise<boolean> => {
-    try {
-      await adminService.deleteFormularioModulo(id);
-      setAssignments((prev) => prev.filter((a) => a.id !== id));
-      Toast.show({ type: "success", text1: "Asignación eliminada" });
-      return true;
-    } catch (error: any) {
-      Toast.show({ type: "error", text1: "Error", text2: error?.message });
-      return false;
-    }
-  };
-  
+
   const fetchAssignments = useCallback(async () => {
     try {
       setLoading(true);
@@ -35,7 +25,7 @@ export function useFormularioModulos() {
     }
   }, []);
 
-  const assign = async (payload: CreateFormularioModuloPayload) => {
+  const assign = async (payload: CreateFormularioModuloPayload): Promise<boolean> => {
     try {
       setSaving(true);
       const created = await adminService.createFormularioModulo(payload);
@@ -56,6 +46,22 @@ export function useFormularioModulos() {
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const removeAssignment = async (id_formulario: number, id_modulo: number): Promise<boolean> => {
+    try {
+      await adminService.deleteFormularioModulo(id_formulario, id_modulo);
+      setAssignments((prev) =>
+        prev.filter(
+          (a) => !(a.id_formulario === id_formulario && a.id_modulo === id_modulo),
+        ),
+      );
+      Toast.show({ type: "success", text1: "Asignación eliminada" });
+      return true;
+    } catch (error: any) {
+      Toast.show({ type: "error", text1: "Error", text2: error?.message });
+      return false;
     }
   };
 

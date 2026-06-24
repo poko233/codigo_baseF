@@ -9,7 +9,6 @@ export function useModuloRoles() {
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
 
-  /* ── GET ─────────────────────────────────────────── */
   const fetchAssignments = useCallback(async () => {
     try {
       setLoading(true);
@@ -26,7 +25,6 @@ export function useModuloRoles() {
     }
   }, []);
 
-  /* ── POST ────────────────────────────────────────── */
   const assign = async (payload: CreateModuloRolPayload): Promise<boolean> => {
     try {
       setSaving(true);
@@ -37,7 +35,7 @@ export function useModuloRoles() {
         text2: "Módulo asignado al rol correctamente",
       });
       await fetchAssignments();
-      modulosEventBus.emit(); // 🔔 avisa al Sidebar
+      modulosEventBus.emit();
       return true;
     } catch (error: any) {
       Toast.show({
@@ -51,18 +49,17 @@ export function useModuloRoles() {
     }
   };
 
-  /* ── DELETE ──────────────────────────────────────── */
-  const remove = async (id: number): Promise<boolean> => {
+  const remove = async (id_modulo: number, id_rol: number): Promise<boolean> => {
     try {
       setSaving(true);
-      await adminService.deleteModuloRol(id);
+      await adminService.deleteModuloRol(id_modulo, id_rol);
       Toast.show({
         type: "success",
         text1: "Eliminado",
         text2: "Asignación eliminada correctamente",
       });
       await fetchAssignments();
-      modulosEventBus.emit(); // 🔔 avisa al Sidebar
+      modulosEventBus.emit();
       return true;
     } catch (error: any) {
       Toast.show({

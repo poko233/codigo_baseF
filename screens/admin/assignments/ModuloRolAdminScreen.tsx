@@ -39,7 +39,6 @@ interface RolGroup {
   id_rol: number;
   nombre_rol: string;
   modulos: Array<{
-    id: number;
     id_modulo: number;
     nombre: string;
     icono: string;
@@ -48,7 +47,8 @@ interface RolGroup {
 
 interface ConfirmState {
   visible: boolean;
-  id: number | null;
+  id_modulo: number | null;
+  id_rol: number | null;
   moduloNombre: string;
   rolNombre: string;
 }
@@ -194,7 +194,8 @@ export function ModuloRolAdminScreen() {
 
   const [confirm, setConfirm] = useState<ConfirmState>({
     visible: false,
-    id: null,
+    id_modulo: null,
+    id_rol: null,
     moduloNombre: "",
     rolNombre: "",
   });
@@ -224,7 +225,6 @@ export function ModuloRolAdminScreen() {
         });
       }
       map.get(a.id_rol)!.modulos.push({
-        id: a.id,
         id_modulo: a.id_modulo,
         nombre:
           a.nombre_modulo ??
@@ -250,18 +250,18 @@ export function ModuloRolAdminScreen() {
   };
 
   /* ── eliminar ────────────────────────────────────────── */
-  const askDelete = (id: number, moduloNombre: string, rolNombre: string) => {
-    setConfirm({ visible: true, id, moduloNombre, rolNombre });
+  const askDelete = (id_modulo: number, id_rol: number, moduloNombre: string, rolNombre: string) => {
+    setConfirm({ visible: true, id_modulo, id_rol, moduloNombre, rolNombre });
   };
 
   const handleConfirmDelete = async () => {
-    if (confirm.id == null) return;
-    await remove(confirm.id);
-    setConfirm({ visible: false, id: null, moduloNombre: "", rolNombre: "" });
+    if (confirm.id_modulo == null || confirm.id_rol == null) return;
+    await remove(confirm.id_modulo, confirm.id_rol);
+    setConfirm({ visible: false, id_modulo: null, id_rol: null, moduloNombre: "", rolNombre: "" });
   };
 
   const handleCancelDelete = () => {
-    setConfirm({ visible: false, id: null, moduloNombre: "", rolNombre: "" });
+    setConfirm({ visible: false, id_modulo: null, id_rol: null, moduloNombre: "", rolNombre: "" });
   };
 
   /* ── ícono del rol ───────────────────────────────────── */
@@ -448,7 +448,7 @@ export function ModuloRolAdminScreen() {
                         const col = badgeColor(mi);
                         return (
                           <View
-                            key={mod.id}
+                            key={String(mod.id_modulo)}
                             style={[
                               styles.badge,
                               {
@@ -470,7 +470,7 @@ export function ModuloRolAdminScreen() {
                             {/* ✕ pegada al badge */}
                             <TouchableOpacity
                               onPress={() =>
-                                askDelete(mod.id, mod.nombre, item.nombre_rol)
+                                askDelete(mod.id_modulo, item.id_rol, mod.nombre, item.nombre_rol)
                               }
                               hitSlop={{ top: 6, bottom: 6, left: 4, right: 6 }}
                               style={[
